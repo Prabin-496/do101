@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-pdf-worker.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-pdf-worker.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -14,22 +16,35 @@
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
+    "docx": "^9.7.1",
+    "fflate": "^0.8.3",
+    "heic-to": "^1.5.2",
+    "js-yaml": "^5.4.1",
+    "jsqr": "^1.4.0",
+    "mammoth": "^1.12.2",
+    "marked": "^18.0.11",
     "next": "16.3.4",
     "next-themes": "^0.4.6",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.3.289",
     "peerjs": "^1.5.5",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "tesseract.js": "^7.0.0",
+    "turndown": "^7.2.4",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
-    "@rolldown/binding-darwin-arm64": "^1.2.7",
     "@tailwindcss/postcss": "^4",
     "@types/canvas-confetti": "^1.9.0",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.13.3",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^6.1.1",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
@@ -37,5 +52,5 @@
     "typescript": "^5",
     "vitest": "^5.0.0"
   },
-  "description": "DO101 \u2014 free online tools, calculators and games. Do more. Simply."
+  "description": "DO101 — free online tools, calculators and games. Do more. Simply."
 }
