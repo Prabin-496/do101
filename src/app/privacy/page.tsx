@@ -88,6 +88,25 @@ export default function PrivacyPage() {
           Use the tool&rsquo;s own page for anything sensitive — nothing leaves your browser there.
         </p>
 
+        <h2>News</h2>
+        <p>
+          The <Link href="/news">news pages</Link> read public RSS and Atom feeds published by the
+          outlets themselves. That fetching happens on DO101&rsquo;s server on a schedule — at most
+          once every 20 minutes — not in your browser, so <strong>the publishers never see your
+          IP address or anything else about you</strong> while you are browsing the headlines.
+        </p>
+        <p>
+          Nothing about your reading is recorded. There is no database, no reading history, no
+          personalisation and no click tracking. Everyone sees the same page. When you follow a
+          headline you go directly to the publisher&rsquo;s site, and their own privacy policy
+          applies from that point.
+        </p>
+        <p>
+          DO101 stores only headlines, timestamps and the short excerpt the feed itself publishes,
+          and only in a temporary cache. Full articles are never copied. Every feed read is listed
+          on the <Link href="/news/sources">sources page</Link>.
+        </p>
+
         <h2>Typing Battle</h2>
         <p>
           Typing Battle connects two browsers directly using WebRTC. A free public signalling service

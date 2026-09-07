@@ -33,6 +33,7 @@ it says so plainly.
 | Games | 4 | `/games` |
 | SEO | 3 | `/tools/seo` |
 | QR & Date/time | 2 | `/tools/datetime` |
+| News | 74 feeds | `/news` |
 
 ## Stack
 
@@ -163,20 +164,51 @@ is fully functional with advertising disabled.
 npm run test
 ```
 
-116 tests covering the logic where a bug would silently produce a wrong
+146 tests covering the logic where a bug would silently produce a wrong
 answer: exact age arithmetic across leap years and short months, percentage
 and stacked-discount maths, BMI band boundaries and unit conversion, word,
 character and grapheme counting, text cleaning and diffing, JSON parsing and
 duplicate-key detection, Unicode-safe Base64, URL encoding, UUID validity and
 uniqueness, JWT decoding, timestamp unit detection, regex execution, WPM and
-accuracy formulas, deterministic seeded typing text, and registry integrity
-(unique ids and routes, valid related links, unique metadata within length
-limits).
+accuracy formulas, deterministic seeded typing text, registry integrity (unique ids and routes, valid related
+links, unique metadata within length limits), RSS and Atom parsing with
+malformed input, news de-duplication and source balancing, and a **lockfile
+guard** that fails if a platform-specific binding ever becomes a direct
+dependency or the optional bindings are pruned — the exact npm bug that broke a
+deploy once already.
 
 ## Deployment
 
 See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for Vercel setup, DNS for
 `do101.online`, HTTPS verification and the optional AI and CSP configuration.
+
+## News aggregator
+
+`/news` merges **74 public RSS and Atom feeds** across AI, technology,
+developers, crypto, finance, startups, security and science into one page, with
+a hub per topic.
+
+**How it stays free.** Feeds are fetched server-side through Next's data cache
+with a 20-minute revalidation, so a thousand visitors trigger one fetch per
+feed, not a thousand. Each feed has an 8-second timeout and its own try/catch,
+so a slow publisher cannot delay or break the page. There is no database, no
+cron job and no scheduled worker — pages are statically regenerated on demand.
+That fits inside the Vercel Hobby plan with room to spare.
+
+**What it does and does not do.** It shows the headline, the feed's own short
+excerpt, the source and the time, then links **straight to the publisher**.
+Full articles are never copied. Nothing about your reading is recorded — no
+history, no personalisation, no click tracking. Every feed is listed at
+`/news/sources`, and any publisher can ask to be removed.
+
+**Quality handling.** The merged stream is de-duplicated by normalised URL and
+by normalised title (so the same story from five outlets appears once), capped
+at four items per publisher so a high-volume feed cannot fill the page,
+interleaved so no two consecutive items share a source, and filtered for
+placeholder titles.
+
+Every feed in `src/lib/news/sources.ts` was fetched and parsed successfully
+before being added — none is there on the assumption that it works.
 
 ## Discovery: search engines and AI assistants
 
@@ -188,6 +220,7 @@ machine-readable surfaces make the catalogue easy to consume:
 | `/sitemap.xml` | Every page, with hubs prioritised above individual tools. |
 | `/llms.txt` | A plain-Markdown summary for language models, generated from the tool registry so it cannot drift. It lists every tool with its URL **and states the site's real limitations**, so an assistant recommending DO101 describes it accurately. |
 | `/api/tools.json` | The full catalogue as CORS-enabled JSON: each tool's URL, summary, keywords, features, FAQ and related links. |
+| `/api/news.json` | The merged headlines as JSON, filterable by `?category=` and `?limit=`. |
 
 `robots.txt` names the AI and search crawlers explicitly (GPTBot, ClaudeBot,
 PerplexityBot, Google-Extended, Applebot and others) and allows all of them.
@@ -231,6 +264,9 @@ content, real traffic and clean navigation — see
 - **MD5 is not offered** in the hash generator. Browsers do not ship it in Web
   Crypto and it is cryptographically broken.
 - **JSON Schema validation** is not implemented; the validator checks syntax.
+- **News depends on third-party feeds.** A publisher can change or withdraw a
+  feed at any time. Failures are counted and shown on the page ("N of 74 feeds
+  answered") rather than hidden, but a dead feed stays dead until it is replaced.
 - **No visual regression testing** yet.
 
 ## Documentation

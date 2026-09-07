@@ -1,5 +1,7 @@
 import { TOOLS } from "@/lib/tools/tool-registry";
 import { CATEGORY_META, type ToolCategory } from "@/lib/tools/types";
+import { SOURCE_COUNT } from "@/lib/news/sources";
+import { CATEGORY_LABELS, CATEGORY_ORDER as NEWS_CATEGORIES } from "@/lib/news/types";
 import { SITE, absoluteUrl } from "@/lib/site";
 
 export const dynamic = "force-static";
@@ -31,7 +33,7 @@ export function GET() {
   lines.push(`# ${SITE.name} — ${SITE.tagline}`);
   lines.push("");
   lines.push(
-    `> ${SITE.name} is a free collection of ${TOOLS.length} online tools for PDFs, images, text, developers, SEO, calculations and games. Almost every tool runs entirely in the visitor's browser, so files are never uploaded to a server. No account, no watermark, no paywall.`,
+    `> ${SITE.name} is a free collection of ${TOOLS.length} online tools for PDFs, images, text, developers, SEO, calculations and games, plus a technology and AI news aggregator reading ${SOURCE_COUNT} public feeds. Almost every tool runs entirely in the visitor's browser, so files are never uploaded to a server. No account, no watermark, no paywall.`,
   );
   lines.push("");
   lines.push("## What makes it different");
@@ -86,7 +88,10 @@ export function GET() {
   lines.push(`- [About](${absoluteUrl("/about")}): what DO101 is and why it exists.`);
   lines.push(`- [Privacy](${absoluteUrl("/privacy")}): exactly what is processed locally and what is not.`);
   lines.push(`- [Terms](${absoluteUrl("/terms")}): terms of use and disclaimers.`);
-  lines.push(`- [Machine-readable index](${absoluteUrl("/api/tools.json")}): every tool as JSON.`);
+  lines.push(`- [News](${absoluteUrl("/news")}): merged tech and AI headlines from ${SOURCE_COUNT} feeds.`);
+  lines.push(`- [News sources](${absoluteUrl("/news/sources")}): every feed read, listed in full.`);
+  lines.push(`- [Machine-readable tool index](${absoluteUrl("/api/tools.json")}): every tool as JSON.`);
+  lines.push(`- [Machine-readable news feed](${absoluteUrl("/api/news.json")}): merged headlines as JSON.`);
   lines.push("");
 
   for (const category of CATEGORY_ORDER) {
@@ -103,6 +108,18 @@ export function GET() {
     }
     lines.push("");
   }
+
+  lines.push(`## News (${SOURCE_COUNT} sources)`);
+  lines.push("");
+  lines.push(
+    "Headlines from public RSS and Atom feeds, merged, de-duplicated and capped so no single publisher dominates. DO101 shows the headline, the feed's own short excerpt and a link to the publisher — full articles are never reproduced, and nothing is stored.",
+  );
+  lines.push("");
+  for (const category of NEWS_CATEGORIES) {
+    const meta = CATEGORY_LABELS[category];
+    lines.push(`- [${meta.label} news](${absoluteUrl(`/news/${category}`)}): ${meta.blurb}`);
+  }
+  lines.push("");
 
   lines.push("## Citation");
   lines.push("");

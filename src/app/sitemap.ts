@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { TOOLS } from "@/lib/tools/tool-registry";
 import { CATEGORY_META, type ToolCategory } from "@/lib/tools/types";
+import { CATEGORY_ORDER as NEWS_CATEGORIES } from "@/lib/news/types";
 import { absoluteUrl } from "@/lib/site";
 
 type Entry = MetadataRoute.Sitemap[number];
@@ -14,6 +15,8 @@ const STATIC_ROUTES: Array<{
   { path: "/tools", priority: 0.9, changeFrequency: "weekly" },
   { path: "/calculators", priority: 0.8, changeFrequency: "weekly" },
   { path: "/games", priority: 0.8, changeFrequency: "weekly" },
+  { path: "/news", priority: 0.9, changeFrequency: "hourly" },
+  { path: "/news/sources", priority: 0.4, changeFrequency: "monthly" },
   { path: "/ai", priority: 0.6, changeFrequency: "monthly" },
   { path: "/about", priority: 0.5, changeFrequency: "monthly" },
   { path: "/contact", priority: 0.4, changeFrequency: "yearly" },
@@ -48,6 +51,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified,
       changeFrequency: "weekly" as const,
       priority: 0.85,
+    })),
+    // News category pages change constantly, so they are crawled more often.
+    ...NEWS_CATEGORIES.map((category) => ({
+      url: absoluteUrl(`/news/${category}`),
+      lastModified,
+      changeFrequency: "hourly" as const,
+      priority: 0.8,
     })),
     ...TOOLS.map((tool) => ({
       url: absoluteUrl(tool.route),

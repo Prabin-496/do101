@@ -28,6 +28,17 @@ const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string
     ],
   },
   {
+    title: "News",
+    links: [
+      { href: "/news", label: "All news" },
+      { href: "/news/ai", label: "AI news" },
+      { href: "/news/tech", label: "Tech news" },
+      { href: "/news/crypto", label: "Crypto news" },
+      { href: "/news/startups", label: "Startup news" },
+      { href: "/news/sources", label: "Our sources" },
+    ],
+  },
+  {
     title: "Play",
     links: [
       { href: "/games", label: "All games" },
@@ -61,7 +72,7 @@ export function Footer() {
   return (
     <footer className="mt-16 border-t-2 border-[var(--border)] bg-[var(--panel)]">
       <div className="mx-auto w-full max-w-6xl px-4 py-10">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-7">
           <div className="lg:col-span-1">
             <Logo showTagline />
             <p className="mt-3 max-w-xs text-sm font-semibold text-[var(--muted)]">

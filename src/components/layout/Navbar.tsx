@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils/cn";
 const LINKS = [
   { href: "/tools", label: "Tools", icon: "🧰" },
   { href: "/tools/pdf", label: "PDF", icon: "📄" },
+  { href: "/news", label: "News", icon: "📰" },
   { href: "/calculators", label: "Calculators", icon: "🧮" },
   { href: "/games", label: "Games", icon: "🎮" },
   { href: "/ai", label: "AI", icon: "🤖" },

@@ -17,6 +17,7 @@
   "dependencies": {
     "canvas-confetti": "^1.9.4",
     "docx": "^9.7.1",
+    "fast-xml-parser": "^5.11.1",
     "fflate": "^0.8.3",
     "heic-to": "^1.5.2",
     "js-yaml": "^5.4.1",

@@ -84,6 +84,18 @@ export default function TermsPage() {
           in some conditions.
         </p>
 
+        <h2>News content</h2>
+        <p>
+          The news pages aggregate headlines from public RSS and Atom feeds. All headlines,
+          excerpts and articles remain the property of their publishers, and every item links to
+          the original. DO101 does not reproduce full articles, does not claim authorship, and is
+          not responsible for the accuracy of anything a third party publishes.
+        </p>
+        <p>
+          Inclusion of a feed is not an endorsement of its content. If you publish one of the listed
+          feeds and would prefer not to be included, contact us and it will be removed.
+        </p>
+
         <h2>Third-party services</h2>
         <p>
           DO101 uses third-party services including its hosting provider, a public WebRTC signalling

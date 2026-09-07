@@ -10,6 +10,8 @@ import { itemListSchema } from "@/lib/seo/structured-data";
 import { buildMetadata } from "@/lib/seo/metadata";
 import { TOOLS, FEATURED_TOOLS, toolsByCategory } from "@/lib/tools/tool-registry";
 import { CATEGORY_META } from "@/lib/tools/types";
+import { SOURCE_COUNT } from "@/lib/news/sources";
+import { CATEGORY_LABELS, CATEGORY_ORDER as NEWS_CATEGORIES } from "@/lib/news/types";
 
 export const metadata: Metadata = buildMetadata({
   title: "DO101 — Free Online Tools, Calculators & Games",
@@ -167,6 +169,51 @@ export default function HomePage() {
         </section>
 
         <AdSlot slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME} className="mb-14" />
+
+        {/* ---------------------------------- NEWS ---------------------------------- */}
+        <section aria-labelledby="news-heading" className="mb-14">
+          <div className="do-card overflow-hidden">
+            <div className="grid gap-6 p-6 sm:p-8 lg:grid-cols-2 lg:items-center">
+              <div>
+                <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-[var(--sky-soft)] px-3 py-1 text-xs font-extrabold uppercase tracking-widest text-[var(--sky-dark)] dark:text-[var(--sky)]">
+                  <span aria-hidden>📰</span> News
+                </p>
+                <h2 id="news-heading" className="text-2xl sm:text-3xl">
+                  Tech and AI news, {SOURCE_COUNT} sources, one page
+                </h2>
+                <p className="mt-3 text-base font-semibold text-[var(--muted)]">
+                  Headlines from OpenAI, DeepMind, The Verge, Ars Technica, CoinDesk, Nature and
+                  dozens more — merged, de-duplicated and refreshed continuously. Every link goes
+                  straight to the publisher. No account, no newsletter, no tracking.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <ButtonLink href="/news" tone="sky">
+                    Read the news
+                  </ButtonLink>
+                  <ButtonLink href="/news/ai" tone="panel">
+                    🤖 AI only
+                  </ButtonLink>
+                </div>
+              </div>
+              <ul className="grid grid-cols-2 gap-2">
+                {NEWS_CATEGORIES.map((category) => {
+                  const meta = CATEGORY_LABELS[category];
+                  return (
+                    <li key={category}>
+                      <Link
+                        href={`/news/${category}`}
+                        className="flex items-center gap-2 rounded-xl border-2 border-[var(--border)] px-3 py-2.5 text-sm font-extrabold transition-colors hover:bg-[var(--panel)]"
+                      >
+                        <span aria-hidden>{meta.icon}</span>
+                        {meta.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        </section>
 
         {/* --------------------------------- GAMES --------------------------------- */}
         <section aria-labelledby="games-heading" className="mb-14">
