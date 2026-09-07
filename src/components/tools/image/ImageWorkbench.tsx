@@ -19,6 +19,7 @@ import {
   FORMAT_EXT,
   FORMAT_LABEL,
   ImageToolError,
+  isHeic,
   WARN_IMAGE_BYTES,
   type LoadedImage,
   type OutputFormat,
@@ -275,6 +276,7 @@ export function ImageWorkbench({
   const totalOut = items.reduce((n, i) => n + (i.output?.blob.size ?? 0), 0);
   const savedPct = totalIn && totalOut ? ((totalIn - totalOut) / totalIn) * 100 : 0;
   const bigFile = items.some((i) => i.file.size > WARN_IMAGE_BYTES);
+  const hasHeic = items.some((i) => isHeic(i.file));
 
   const actionLabel =
     mode === "compress" ? "Compress" : mode === "resize" ? "Resize" : `Convert to ${FORMAT_LABEL[format]}`;
@@ -449,6 +451,13 @@ export function ImageWorkbench({
                 </div>
               ) : null}
             </div>
+
+            {hasHeic ? (
+              <p className="mt-4 rounded-xl bg-[var(--sky-soft)] px-3 py-2 text-xs font-bold">
+                📱 HEIC detected. No browser decodes Apple&rsquo;s HEIC natively, so DO101 loads a
+                WebAssembly decoder for it — the first one takes a moment longer.
+              </p>
+            ) : null}
 
             {bigFile ? (
               <p className="mt-4 rounded-xl bg-[var(--sun-soft)] px-3 py-2 text-xs font-bold text-[var(--ink)]">

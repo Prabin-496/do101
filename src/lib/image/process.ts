@@ -26,8 +26,28 @@ export interface LoadedImage {
 
 export class ImageToolError extends Error {}
 
+/** iPhone HEIC/HEIF files: no browser can decode these natively yet. */
+export function isHeic(file: File): boolean {
+  return /\.hei[cf]$/i.test(file.name) || /image\/hei[cf]/i.test(file.type);
+}
+
+/**
+ * Decodes HEIC to a PNG blob with libheif compiled to WebAssembly.
+ * Loaded lazily, so the ~1.5 MB decoder only reaches people who open a HEIC.
+ */
+async function decodeHeic(file: File): Promise<Blob> {
+  try {
+    const { heicTo } = await import("heic-to");
+    return await heicTo({ blob: file, type: "image/png", quality: 1 });
+  } catch {
+    throw new ImageToolError(
+      `${file.name} could not be decoded. It may be a HEIC variant this decoder does not support — on an iPhone you can set Settings › Camera › Formats to "Most Compatible" to shoot JPG instead.`,
+    );
+  }
+}
+
 export async function loadImage(file: File): Promise<LoadedImage> {
-  if (!file.type.startsWith("image/")) {
+  if (!file.type.startsWith("image/") && !isHeic(file)) {
     throw new ImageToolError(`${file.name} is not an image file.`);
   }
   if (file.size > MAX_IMAGE_BYTES) {
@@ -36,7 +56,8 @@ export async function loadImage(file: File): Promise<LoadedImage> {
     );
   }
   try {
-    const bitmap = await createImageBitmap(file);
+    const source = isHeic(file) ? await decodeHeic(file) : file;
+    const bitmap = await createImageBitmap(source);
     if (bitmap.width > MAX_DIMENSION || bitmap.height > MAX_DIMENSION) {
       bitmap.close?.();
       throw new ImageToolError(

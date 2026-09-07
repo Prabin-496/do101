@@ -15,9 +15,10 @@ export default function AppleIcon() {
           justifyContent: "center",
           background: "#4CC93F",
           color: "white",
-          fontSize: 74,
+          fontSize: 84,
           fontWeight: 800,
-          letterSpacing: -2,
+          letterSpacing: -4,
+          // Apple applies its own mask, so the square is drawn edge to edge.
         }}
       >
         DO

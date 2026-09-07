@@ -1,12 +1,24 @@
 export type ToolCategory =
+  | "pdf"
   | "image"
+  | "converter"
   | "text"
   | "developer"
+  | "seo"
+  | "qr"
+  | "generator"
+  | "datetime"
   | "calculator"
   | "productivity"
   | "game";
 
 export type ToolIO = "file" | "text" | "numbers" | "none" | "keyboard";
+
+/**
+ * Where the work happens. DO101 only ever claims "browser" when there is
+ * genuinely no upload endpoint behind the tool.
+ */
+export type Processing = "browser" | "server";
 
 export interface ToolFaq {
   q: string;
@@ -48,12 +60,26 @@ export const CATEGORY_META: Record<
   ToolCategory,
   { label: string; slug: string; icon: string; blurb: string; accent: Tool["accent"] }
 > = {
+  pdf: {
+    label: "PDF",
+    slug: "pdf",
+    icon: "📄",
+    blurb: "Merge, split, rotate, convert and compress PDFs without uploading them.",
+    accent: "cherry",
+  },
   image: {
     label: "Image",
     slug: "image",
     icon: "🖼️",
     blurb: "Compress, resize and convert pictures without uploading them anywhere.",
     accent: "grape",
+  },
+  converter: {
+    label: "Converters",
+    slug: "converters",
+    icon: "🔄",
+    blurb: "Move between formats: documents, spreadsheets, images and data.",
+    accent: "sky",
   },
   text: {
     label: "Text",
@@ -68,6 +94,34 @@ export const CATEGORY_META: Record<
     icon: "⚡",
     blurb: "JSON, Base64, regex, hashes, tokens — the daily driver toolkit.",
     accent: "grass",
+  },
+  seo: {
+    label: "SEO",
+    slug: "seo",
+    icon: "📈",
+    blurb: "Meta tags, structured data, sitemaps and snippet previews.",
+    accent: "grass",
+  },
+  qr: {
+    label: "QR Codes",
+    slug: "qr",
+    icon: "📱",
+    blurb: "Generate and scan QR codes for links, Wi-Fi, contacts and more.",
+    accent: "sun",
+  },
+  generator: {
+    label: "Generators",
+    slug: "generators",
+    icon: "🎲",
+    blurb: "Passwords, placeholder text, colours and random data on demand.",
+    accent: "grape",
+  },
+  datetime: {
+    label: "Date & Time",
+    slug: "datetime",
+    icon: "🕒",
+    blurb: "Differences, timers, time zones and timestamps.",
+    accent: "sky",
   },
   calculator: {
     label: "Calculators",

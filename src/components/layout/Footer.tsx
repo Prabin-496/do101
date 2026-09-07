@@ -4,13 +4,27 @@ import { SITE } from "@/lib/site";
 
 const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string }> }> = [
   {
-    title: "Tools",
+    title: "Categories",
     links: [
       { href: "/tools", label: "All tools" },
+      { href: "/tools/pdf", label: "PDF tools" },
+      { href: "/tools/image", label: "Image tools" },
+      { href: "/tools/converters", label: "Converters" },
+      { href: "/tools/text", label: "Text tools" },
+      { href: "/tools/developer", label: "Developer tools" },
+      { href: "/tools/seo", label: "SEO tools" },
+      { href: "/calculators", label: "Calculators" },
+    ],
+  },
+  {
+    title: "Popular",
+    links: [
+      { href: "/tools/pdf-merge", label: "Merge PDF" },
       { href: "/tools/image-compressor", label: "Image Compressor" },
+      { href: "/tools/heic-to-jpg", label: "HEIC to JPG" },
+      { href: "/tools/pdf-to-word", label: "PDF to Word" },
       { href: "/tools/json-formatter", label: "JSON Formatter" },
       { href: "/tools/word-counter", label: "Word Counter" },
-      { href: "/tools/qr-generator", label: "QR Generator" },
     ],
   },
   {
@@ -47,7 +61,7 @@ export function Footer() {
   return (
     <footer className="mt-16 border-t-2 border-[var(--border)] bg-[var(--panel)]">
       <div className="mx-auto w-full max-w-6xl px-4 py-10">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-1">
             <Logo showTagline />
             <p className="mt-3 max-w-xs text-sm font-semibold text-[var(--muted)]">

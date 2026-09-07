@@ -1,0 +1,131 @@
+import type { Tool } from "../types";
+
+/**
+ * Games. Scores are stored on the visitor's own device, never a leaderboard.
+ */
+export const GAMES_TOOLS: Tool[] = [
+  {
+    id: "typing-test",
+    name: "Typing Speed Test",
+    short: "Measure your WPM and accuracy in 15, 30 or 60 seconds.",
+    long:
+      "A clean, distraction-free typing test. Choose a duration, start typing, and watch your speed and accuracy update live. Your best score is saved on your device so you can chase it, and the result is easy to share.",
+    category: "game",
+    route: "/games/typing-test",
+    keywords: ["typing test", "typing speed test", "wpm test", "words per minute", "how fast can i type", "typing practice"],
+    aliases: ["wpm test", "test my typing speed", "speed typing"],
+    icon: "⌨️",
+    accent: "cherry",
+    browserOnly: true,
+    aiInvocable: false,
+    input: "keyboard",
+    output: "numbers",
+    related: ["typing-battle", "reaction-test", "memory-test", "word-counter"],
+    seoTitle: "Free Typing Speed Test — Check Your WPM in 60 Seconds | DO101",
+    seoDescription:
+      "Test your typing speed and accuracy in 15, 30 or 60 seconds. Live WPM, accuracy and error counts, personal best saved locally, results easy to share.",
+    steps: ["Pick 15, 30 or 60 seconds.", "Start typing the text — the timer starts on your first keystroke.", "Read your WPM, accuracy and errors, then share or retry."],
+    features: [
+      "15, 30 and 60 second modes",
+      "Live WPM, CPM and accuracy",
+      "Per-character correctness highlighting",
+      "Personal best stored on your device",
+      "Shareable result card",
+    ],
+    faqs: [
+      { q: "How is WPM calculated?", a: "The standard formula: every five correct characters counts as one word, divided by the elapsed minutes. DO101 shows both net WPM (correct characters only) and raw CPM." },
+      { q: "What is a good typing speed?", a: "Around 40 WPM is average for adults, 60–70 WPM is fast, and above 100 WPM is genuinely rare. Accuracy above 95% matters more than raw speed for real work." },
+      { q: "Do I need an account?", a: "No. Your best score is saved in your own browser with localStorage and never sent to DO101." },
+    ],
+    featured: true,
+  },
+  {
+    id: "typing-battle",
+    name: "Typing Battle",
+    short: "Race a friend on the same text, live, from a shared link.",
+    long:
+      "Create a room, send the link to a friend, and race through identical text with both progress bars moving in real time. The connection is peer-to-peer over WebRTC, so there is no server holding your keystrokes.",
+    category: "game",
+    route: "/games/typing-battle",
+    keywords: ["typing battle", "typing race", "multiplayer typing test", "typing game with friends", "1v1 typing"],
+    aliases: ["typing race", "type against friend", "typing 1v1"],
+    icon: "⚔️",
+    accent: "cherry",
+    browserOnly: true,
+    aiInvocable: false,
+    input: "keyboard",
+    output: "numbers",
+    related: ["typing-test", "reaction-test", "memory-test", "word-counter"],
+    seoTitle: "Typing Battle — Free 1v1 Multiplayer Typing Race | DO101",
+    seoDescription:
+      "Challenge a friend to a live typing race. Share a room link, race the same text, and watch both progress bars in real time. Free, no sign-up.",
+    steps: ["Create a room and copy the link.", "Send it to a friend and wait for them to join.", "Race the same text and see who finishes first."],
+    features: [
+      "Real peer-to-peer connection over WebRTC",
+      "Live opponent progress and WPM",
+      "Synchronised countdown and identical text",
+      "Rematch without creating a new room",
+      "Honest connection states — never a fake opponent",
+    ],
+    faqs: [
+      { q: "Is this real multiplayer?", a: "Yes. Both browsers connect directly to each other over WebRTC using a public signalling broker to exchange addresses. DO101 never simulates an opponent — if nobody joins, the screen says so." },
+      { q: "Why did the connection fail?", a: "Strict corporate firewalls and some mobile networks block peer-to-peer traffic. DO101 shows a clear failure state with a retry, rather than pretending you are connected." },
+      { q: "How long does a room last?", a: "A room exists only while the host's tab is open. Close it and the room is gone — there is no database keeping it alive." },
+    ],
+    featured: true,
+  },
+  {
+    id: "reaction-test",
+    name: "Reaction Time Test",
+    short: "How fast are your reflexes? Measure it in milliseconds.",
+    long:
+      "Wait for green, then click as fast as you can. DO101 measures your reaction time with high-resolution browser timing across five rounds and gives you an average you can compare and share.",
+    category: "game",
+    route: "/games/reaction-test",
+    keywords: ["reaction time test", "reflex test", "reaction speed", "click speed test", "average reaction time"],
+    aliases: ["reflex test", "how fast are my reflexes", "reaction speed test"],
+    icon: "⚡",
+    accent: "cherry",
+    browserOnly: true,
+    aiInvocable: false,
+    input: "none",
+    output: "numbers",
+    related: ["typing-test", "memory-test", "typing-battle", "age"],
+    seoTitle: "Reaction Time Test — Measure Your Reflexes in ms | DO101",
+    seoDescription:
+      "Test your reaction time in milliseconds across five rounds using high-resolution browser timing. Free, no sign-up, share your average.",
+    steps: ["Press start and wait for the screen to turn green.", "Click, tap or hit space the instant it changes.", "Repeat five times for your average."],
+    features: ["Five rounds with a running average", "High-resolution performance timing", "Too-soon detection", "Personal best saved locally", "Works with mouse, touch or keyboard"],
+    faqs: [
+      { q: "What is a good reaction time?", a: "Around 250 ms is typical for a visual click reaction. Under 200 ms is fast. Anything below about 100 ms usually means you anticipated the change rather than reacted to it." },
+      { q: "Does my screen affect the result?", a: "Yes. Display latency and refresh rate add a few milliseconds, so compare your scores against your own history rather than against other setups." },
+    ],
+  },
+  {
+    id: "memory-test",
+    name: "Memory Test",
+    short: "Repeat a growing sequence. How many can you hold?",
+    long:
+      "A progressive sequence-memory game. Watch the pattern light up, repeat it, and each round adds one more step. Simple to learn, surprisingly hard to beat.",
+    category: "game",
+    route: "/games/memory-test",
+    keywords: ["memory test", "sequence memory", "memory game", "brain training", "short term memory test"],
+    aliases: ["sequence game", "memory game", "brain test"],
+    icon: "🧠",
+    accent: "cherry",
+    browserOnly: true,
+    aiInvocable: false,
+    input: "none",
+    output: "numbers",
+    related: ["reaction-test", "typing-test", "typing-battle", "percentage"],
+    seoTitle: "Memory Test — Free Sequence Memory Game | DO101",
+    seoDescription:
+      "Play a progressive sequence memory game in your browser. Each level adds one step — see how far you can get. Free, no sign-up, share your level.",
+    steps: ["Press start and watch the sequence.", "Tap the tiles back in the same order.", "Each level adds one more step."],
+    features: ["Progressive difficulty", "Keyboard and touch friendly", "Best level saved on your device", "Sound-free by design", "Shareable result"],
+    faqs: [
+      { q: "What is an average score?", a: "Most people manage between 7 and 9 steps, which matches the classic research on short-term memory span. Chunking the sequence helps you go further." },
+      { q: "Is my score sent anywhere?", a: "No. Your best level lives in your browser's local storage only." },
+    ],
+  },
+];

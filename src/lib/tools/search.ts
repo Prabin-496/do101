@@ -60,7 +60,12 @@ export function searchTools(query: string, limit = 8): SearchHit[] {
       const s = fuzzyScore(q, text) * weight;
       if (s > best) best = s;
     }
-    if (best > 0) hits.push({ tool, score: best });
+
+    // A short generic query like "json" matches a dozen tools almost equally.
+    // Nudging the editorially featured ones ahead means "json" lands on the
+    // JSON Formatter rather than whichever tool happens to have the shortest
+    // name. This is a curation signal, never a usage statistic.
+    if (best > 0) hits.push({ tool, score: best + (tool.featured ? 40 : 0) });
   }
   return hits.sort((a, b) => b.score - a.score).slice(0, limit);
 }
