@@ -19,17 +19,21 @@ export const metadata: Metadata = buildMetadata({
 });
 
 const CATEGORY_LINKS = [
-  { key: "image", href: "/tools?category=image" },
-  { key: "text", href: "/tools?category=text" },
-  { key: "developer", href: "/tools?category=developer" },
+  { key: "pdf", href: "/tools/pdf" },
+  { key: "image", href: "/tools/image" },
+  { key: "converter", href: "/tools/converters" },
+  { key: "text", href: "/tools/text" },
+  { key: "developer", href: "/tools/developer" },
+  { key: "seo", href: "/tools/seo" },
   { key: "calculator", href: "/calculators" },
-  { key: "productivity", href: "/tools?category=productivity" },
+  { key: "datetime", href: "/tools/datetime" },
   { key: "game", href: "/games" },
 ] as const;
 
 export default function HomePage() {
   const devTools = toolsByCategory("developer").slice(0, 6);
-  const imageTools = toolsByCategory("image");
+  const imageTools = toolsByCategory("image").slice(0, 8);
+  const pdfTools = toolsByCategory("pdf").slice(0, 8);
   const games = toolsByCategory("game");
 
   return (
@@ -41,7 +45,7 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-4xl px-4 py-12 text-center sm:py-20">
           <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-[var(--border)] bg-[var(--bg)] px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-[var(--muted)]">
             <span aria-hidden>✨</span>
-            {TOOLS.length} free tools · no sign-up
+{TOOLS.length} free tools · no sign-up · no upload
           </p>
 
           <h1 className="text-4xl leading-[1.05] sm:text-6xl">
@@ -50,8 +54,10 @@ export default function HomePage() {
           </h1>
 
           <p className="mx-auto mt-4 max-w-xl text-lg font-semibold text-[var(--muted)]">
-            Free online tools, fast answers, and fun challenges — all in one place. Most of them run
-            right inside your browser, so nothing is uploaded.
+            Merge a PDF, compress a photo, convert a file, format some JSON, settle a calculation —
+            {" "}
+            <strong className="text-[var(--ink)]">free, with no sign-up</strong>. Almost everything
+            runs inside your browser, so your files are never uploaded.
           </p>
 
           <div className="mt-8">
@@ -62,11 +68,11 @@ export default function HomePage() {
           </div>
 
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-            <ButtonLink href="/tools" tone="grass" size="lg">
-              Browse tools
+            <ButtonLink href="/tools/pdf" tone="grass" size="lg">
+              📄 PDF tools
             </ButtonLink>
-            <ButtonLink href="/games/typing-battle" tone="cherry" size="lg">
-              ⚔️ Try Typing Battle
+            <ButtonLink href="/tools" tone="sky" size="lg">
+              Browse all {TOOLS.length}
             </ButtonLink>
             <ButtonLink href="/ai" tone="panel" size="lg">
               Ask DO101 AI
@@ -75,13 +81,13 @@ export default function HomePage() {
 
           <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-extrabold text-[var(--muted)]">
             <li className="flex items-center gap-1.5">
-              <span aria-hidden>🔒</span> Files never uploaded
+              <span aria-hidden>🔒</span> No upload — files stay on your device
             </li>
             <li className="flex items-center gap-1.5">
-              <span aria-hidden>⚡</span> Instant results
+              <span aria-hidden>🙅</span> No account, no watermark
             </li>
             <li className="flex items-center gap-1.5">
-              <span aria-hidden>🆓</span> Free, forever
+              <span aria-hidden>♾️</span> No file limits or credits
             </li>
           </ul>
         </div>
@@ -96,7 +102,7 @@ export default function HomePage() {
             Pick a path
           </h2>
           <p className="mb-5 text-sm font-semibold text-[var(--muted)]">
-            Six categories, every one of them free.
+            Nine categories, every one of them free.
           </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {CATEGORY_LINKS.map(({ key, href }) => {
@@ -135,6 +141,27 @@ export default function HomePage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURED_TOOLS.map((tool) => (
               <ToolCard key={tool.id} tool={tool} />
+            ))}
+          </div>
+        </section>
+
+        <section aria-labelledby="pdf-heading" className="mb-14">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 id="pdf-heading" className="text-2xl sm:text-3xl">
+                Free PDF tools
+              </h2>
+              <p className="text-sm font-semibold text-[var(--muted)]">
+                Merge, split, compress, convert and sign — without uploading your documents.
+              </p>
+            </div>
+            <ButtonLink href="/tools/pdf" tone="panel" size="sm">
+              All PDF tools
+            </ButtonLink>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {pdfTools.map((tool) => (
+              <ToolCard key={tool.id} tool={tool} compact />
             ))}
           </div>
         </section>
@@ -191,10 +218,11 @@ export default function HomePage() {
           </h2>
           <div className="space-y-4 text-base font-semibold leading-relaxed text-[var(--muted)]">
             <p>
-              DO101 is a free collection of everyday online tools: image compressors and resizers,
-              text counters and cleaners, developer utilities like a JSON formatter and Base64
-              encoder, practical calculators, a QR code generator, and a set of quick browser games.
-              There is nothing to install and nothing to sign up for.
+              DO101 is a free collection of {TOOLS.length} everyday online tools: a full set of PDF
+              tools, image compressors and converters, document and data converters, text utilities,
+              developer tools like a JSON formatter and Base64 encoder, SEO helpers, practical
+              calculators, a QR code generator and a few quick browser games. There is nothing to
+              install and nothing to sign up for.
             </p>
             <p>
               The idea is simple. You usually arrive at a tools site with one specific job —
@@ -220,26 +248,43 @@ export default function HomePage() {
               .
             </p>
 
-            <h3 className="pt-2 text-xl text-[var(--ink)]">Popular online tools</h3>
+            <h3 className="pt-2 text-xl text-[var(--ink)]">What people come here to do</h3>
             <p>
-              The most-used pages on DO101 are the{" "}
+              The jobs that bring most people to DO101 are{" "}
+              <Link href="/tools/pdf-merge" className="font-extrabold text-[var(--ink)] underline">
+                merging PDFs
+              </Link>
+              ,{" "}
+              <Link href="/tools/pdf-to-word" className="font-extrabold text-[var(--ink)] underline">
+                turning a PDF into an editable Word file
+              </Link>
+              ,{" "}
               <Link href="/tools/image-compressor" className="font-extrabold text-[var(--ink)] underline">
-                image compressor
+                compressing a photo under a size limit
               </Link>
-              , the{" "}
+              ,{" "}
+              <Link href="/tools/heic-to-jpg" className="font-extrabold text-[var(--ink)] underline">
+                opening an iPhone HEIC photo
+              </Link>
+              ,{" "}
               <Link href="/tools/json-formatter" className="font-extrabold text-[var(--ink)] underline">
-                JSON formatter
-              </Link>
-              , the{" "}
-              <Link href="/tools/word-counter" className="font-extrabold text-[var(--ink)] underline">
-                word counter
+                making JSON readable
               </Link>{" "}
-              and the{" "}
-              <Link href="/games/typing-test" className="font-extrabold text-[var(--ink)] underline">
-                typing speed test
+              and{" "}
+              <Link href="/tools/word-counter" className="font-extrabold text-[var(--ink)] underline">
+                counting words
               </Link>
-              . Each one is a full page with the tool at the top and a proper explanation
+              . Each one is a full page with the working tool at the top and a proper explanation
               underneath.
+            </p>
+
+            <h3 className="pt-2 text-xl text-[var(--ink)]">What DO101 will not do</h3>
+            <p>
+              Being useful means being honest about the edges. DO101 does not offer PDF password
+              removal or encryption, because a browser cannot do either reliably. Its PDF-to-Word
+              conversion recovers text and paragraphs but not page layout, and it says so on the
+              page rather than handing back a mangled document. There are no invented usage
+              statistics, no fake reviews and no simulated opponents anywhere on the site.
             </p>
           </div>
         </section>

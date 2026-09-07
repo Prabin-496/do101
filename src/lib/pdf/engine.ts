@@ -333,3 +333,136 @@ export function downloadBytes(bytes: Uint8Array, filename: string, type = "appli
 export function pdfName(original: string, suffix: string): string {
   return `${original.replace(/\.pdf$/i, "")}-${suffix}.pdf`;
 }
+
+/* ------------------------------- cropping ------------------------------- */
+
+export interface CropMargins {
+  /** Fractions of the page, 0–0.45, trimmed from each edge. */
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+/**
+ * Sets the crop box rather than redrawing content, so nothing is re-encoded
+ * and text stays selectable. The trimmed content still exists in the file —
+ * cropping hides it, it does not delete it. Use Redact when removal matters.
+ */
+export async function cropPdf(
+  bytes: ArrayBuffer,
+  margins: CropMargins,
+  indices?: number[],
+): Promise<Uint8Array> {
+  const doc = await open(bytes);
+  const selected = indices ? new Set(indices) : null;
+
+  doc.getPages().forEach((page, i) => {
+    if (selected && !selected.has(i)) return;
+    const { width, height } = page.getSize();
+    const left = width * Math.min(0.45, Math.max(0, margins.left));
+    const right = width * Math.min(0.45, Math.max(0, margins.right));
+    const top = height * Math.min(0.45, Math.max(0, margins.top));
+    const bottom = height * Math.min(0.45, Math.max(0, margins.bottom));
+
+    const newWidth = Math.max(1, width - left - right);
+    const newHeight = Math.max(1, height - top - bottom);
+    page.setCropBox(left, bottom, newWidth, newHeight);
+    page.setMediaBox(left, bottom, newWidth, newHeight);
+  });
+
+  return doc.save({ useObjectStreams: true });
+}
+
+/* ------------------------------- signing -------------------------------- */
+
+export interface StampPlacement {
+  pageIndex: number;
+  /** Fractions of page width/height, measured from the top-left corner. */
+  x: number;
+  y: number;
+  widthFraction: number;
+}
+
+/**
+ * Draws a PNG (a drawn signature, initials or a logo) onto chosen pages.
+ * This is a visual stamp, not a cryptographic signature — the page says so.
+ */
+export async function stampImage(
+  bytes: ArrayBuffer,
+  pngBytes: ArrayBuffer,
+  placements: StampPlacement[],
+): Promise<Uint8Array> {
+  const doc = await open(bytes);
+  const image = await doc.embedPng(pngBytes);
+  const pages = doc.getPages();
+
+  for (const placement of placements) {
+    const page = pages[placement.pageIndex];
+    if (!page) continue;
+    const { width, height } = page.getSize();
+    const drawWidth = width * placement.widthFraction;
+    const drawHeight = drawWidth * (image.height / image.width);
+
+    page.drawImage(image, {
+      x: width * placement.x,
+      // pdf-lib measures from the bottom; the UI measures from the top.
+      y: height - height * placement.y - drawHeight,
+      width: drawWidth,
+      height: drawHeight,
+    });
+  }
+
+  return doc.save({ useObjectStreams: true });
+}
+
+/* ------------------------------- repairing ------------------------------ */
+
+export interface RepairReport {
+  bytes: Uint8Array;
+  pages: number;
+  recovered: boolean;
+  note: string;
+}
+
+/**
+ * Best-effort recovery: re-parse the file loosely and write a clean document
+ * from whatever pages survive. It cannot rebuild genuinely missing data, and
+ * says so rather than implying a damaged file has been fully restored.
+ */
+export async function repairPdf(bytes: ArrayBuffer): Promise<RepairReport> {
+  const { PDFDocument } = await lib();
+
+  try {
+    const source = await PDFDocument.load(bytes, {
+      ignoreEncryption: true,
+      throwOnInvalidObject: false,
+      updateMetadata: false,
+    });
+    const out = await PDFDocument.create();
+    const indices = source.getPageIndices();
+    const copied = await out.copyPages(source, indices);
+    copied.forEach((page) => out.addPage(page));
+
+    if (out.getPageCount() === 0) {
+      throw new PdfError("No readable pages were found in this file.");
+    }
+
+    const saved = await out.save({ useObjectStreams: true });
+    return {
+      bytes: saved,
+      pages: out.getPageCount(),
+      recovered: true,
+      note:
+        out.getPageCount() === indices.length
+          ? `All ${indices.length} pages were readable and the file has been rewritten cleanly.`
+          : `Recovered ${out.getPageCount()} of ${indices.length} pages. The rest could not be read.`,
+    };
+  } catch (error) {
+    throw new PdfError(
+      error instanceof PdfError
+        ? error.message
+        : "This file is too damaged to recover in a browser. The header or cross-reference table may be missing entirely.",
+    );
+  }
+}

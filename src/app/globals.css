@@ -220,3 +220,89 @@ h1, h2, h3, h4 {
     scroll-behavior: auto !important;
   }
 }
+
+/* ------------------------------------------------------------------
+   Flip clock. The classic split-flap card: a seam across the middle,
+   the top half falling forward while the new bottom half rises.
+------------------------------------------------------------------- */
+.flip-card {
+  position: relative;
+  display: block;
+  border-radius: 0.14em;
+  background: var(--flip-bg, #16181c);
+  color: var(--flip-fg, #f2f5f8);
+  line-height: 1;
+  perspective: 22em;
+  box-shadow: 0 0.05em 0.18em rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.flip-half {
+  position: relative;
+  height: 50%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  background: var(--flip-bg, #16181c);
+}
+
+/* The two halves show the same glyph, clipped to opposite sides. */
+.flip-half > span {
+  display: block;
+  height: 2em;
+  line-height: 1;
+}
+.flip-half-top > span { transform: translateY(0); }
+.flip-half-bottom > span { transform: translateY(-50%); }
+
+.flip-half-top {
+  border-bottom: 0.012em solid rgba(0, 0, 0, 0.55);
+  background: linear-gradient(180deg, var(--flip-bg-top, #1d2025), var(--flip-bg, #16181c));
+}
+.flip-half-bottom {
+  background: linear-gradient(180deg, var(--flip-bg, #16181c), var(--flip-bg-bottom, #101216));
+}
+
+.flip-anim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  backface-visibility: hidden;
+  z-index: 2;
+}
+.flip-anim > span { display: block; height: 2em; line-height: 1; }
+
+.flip-anim-top {
+  top: 0;
+  transform-origin: bottom;
+  animation: flip-top 320ms cubic-bezier(0.36, 0, 0.66, -0.24) forwards;
+  border-bottom: 0.012em solid rgba(0, 0, 0, 0.55);
+  background: linear-gradient(180deg, var(--flip-bg-top, #1d2025), var(--flip-bg, #16181c));
+}
+.flip-anim-top > span { transform: translateY(0); }
+
+.flip-anim-bottom {
+  bottom: 0;
+  transform-origin: top;
+  transform: rotateX(90deg);
+  animation: flip-bottom 320ms cubic-bezier(0.34, 1.3, 0.64, 1) 300ms forwards;
+  background: linear-gradient(180deg, var(--flip-bg, #16181c), var(--flip-bg-bottom, #101216));
+}
+.flip-anim-bottom > span { transform: translateY(-50%); }
+
+@keyframes flip-top {
+  0% { transform: rotateX(0deg); }
+  100% { transform: rotateX(-90deg); }
+}
+@keyframes flip-bottom {
+  0% { transform: rotateX(90deg); }
+  100% { transform: rotateX(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-anim { display: none; }
+}

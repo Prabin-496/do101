@@ -29,6 +29,7 @@ const HUB_CATEGORIES: ToolCategory[] = [
   "text",
   "developer",
   "seo",
+  "datetime",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

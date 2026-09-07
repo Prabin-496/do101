@@ -60,7 +60,18 @@ export function GET() {
   lines.push(
     "- Password-protected PDFs cannot be opened, and PDF encryption and unlocking are not offered.",
   );
-  lines.push("- PDF to Excel and PowerPoint conversion are not offered — they need server-side layout analysis.");
+  lines.push(
+    "- PDF to Excel recovers tables from the text layer by clustering word positions, and reports a confidence score. Merged cells and multi-line cells are where it struggles.",
+  );
+  lines.push(
+    "- Redaction works by flattening pages to images with the marked areas painted out, so the text is genuinely removed — at the cost of the page no longer being selectable text.",
+  );
+  lines.push(
+    "- Signing places a visual signature, not a cryptographic one. It creates no certificate or audit trail.",
+  );
+  lines.push(
+    "- PowerPoint conversion and PDF/A archiving are not offered — they need server-side layout analysis.",
+  );
   lines.push(
     "- OCR downloads a language model (~12–15 MB) from a public CDN on first use; recognition itself is local.",
   );

@@ -10,13 +10,29 @@ browser.
 
 ## What this is
 
-A browser-first toolbox. Image compression uses the canvas encoder your browser
-already ships. JSON parsing uses the built-in JSON engine. Hashing uses Web
-Crypto. Typing games measure your own keystrokes locally. Nothing is uploaded,
-which makes the tools private, instant and almost free to host.
+A browser-first toolbox. PDFs are merged, split and rebuilt with pdf-lib and
+rendered with pdf.js. Image compression uses the canvas encoder your browser
+already ships. HEIC is decoded by a WebAssembly build of libheif. OCR runs
+Tesseract as WebAssembly. JSON parsing uses the built-in JSON engine, hashing
+uses Web Crypto, and typing games measure your own keystrokes locally.
 
-The one exception is the optional AI router, and every page that touches it
-says so plainly.
+Nothing is uploaded, which makes the tools private, instant and almost free to
+host. The one exception is the optional AI router, and every page that touches
+it says so plainly.
+
+### Categories
+
+| Category | Tools | Hub |
+| --- | --- | --- |
+| PDF | 29 | `/tools/pdf` |
+| Developer | 23 | `/tools/developer` |
+| Text | 14 | `/tools/text` |
+| Image | 12 | `/tools/image` |
+| Converters | 4 | `/tools/converters` |
+| Calculators | 4 | `/calculators` |
+| Games | 4 | `/games` |
+| SEO | 3 | `/tools/seo` |
+| QR & Date/time | 2 | `/tools/datetime` |
 
 ## Stack
 
@@ -29,10 +45,18 @@ says so plainly.
 | Testing | Vitest (116 unit tests) |
 | Hosting | Vercel free tier |
 
-**Runtime dependencies:** `qrcode` (QR rendering), `peerjs` (WebRTC signalling
-for Typing Battle), `canvas-confetti` (celebration, lazily loaded),
-`next-themes` (theme switching), `server-only` (import guard). That is the
-entire list — everything else is a Web API.
+**Runtime dependencies:** `pdf-lib` (PDF writing), `pdfjs-dist` (PDF rendering
+and text extraction), `tesseract.js` (OCR), `heic-to` (HEIC decoding),
+`mammoth` (.docx reading), `docx` (.docx writing), `xlsx` (spreadsheets),
+`marked` + `turndown` (Markdown), `js-yaml`, `qrcode`, `jsqr`, `fflate` (zip),
+`peerjs` (WebRTC for Typing Battle), `canvas-confetti`, `next-themes` and
+`server-only`. Every one of them is lazily imported, so a tool's library only
+downloads on the page that needs it.
+
+> **Note on `xlsx`:** installed from SheetJS's own CDN
+> (`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`) rather than npm. The
+> npm copy is abandoned at 0.18.5 and carries unfixed prototype-pollution and
+> ReDoS advisories; SheetJS publishes patched releases only from their site.
 
 ## Getting started
 
@@ -153,6 +177,26 @@ limits).
 
 See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for Vercel setup, DNS for
 `do101.online`, HTTPS verification and the optional AI and CSP configuration.
+
+## Discovery: search engines and AI assistants
+
+Every tool has its own indexable URL — 111 URLs in the sitemap — and three
+machine-readable surfaces make the catalogue easy to consume:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `/sitemap.xml` | Every page, with hubs prioritised above individual tools. |
+| `/llms.txt` | A plain-Markdown summary for language models, generated from the tool registry so it cannot drift. It lists every tool with its URL **and states the site's real limitations**, so an assistant recommending DO101 describes it accurately. |
+| `/api/tools.json` | The full catalogue as CORS-enabled JSON: each tool's URL, summary, keywords, features, FAQ and related links. |
+
+`robots.txt` names the AI and search crawlers explicitly (GPTBot, ClaudeBot,
+PerplexityBot, Google-Extended, Applebot and others) and allows all of them.
+Only `POST /api/ai` is disallowed, since it returns nothing useful to a crawler.
+
+Structured data covers `WebSite`, `Organization`, `SoftwareApplication` /
+`WebApplication`, `BreadcrumbList`, `FAQPage` and `ItemList`. There are no
+review or rating schemas anywhere, because DO101 has no genuine ratings to
+report.
 
 ## Google Search Console
 

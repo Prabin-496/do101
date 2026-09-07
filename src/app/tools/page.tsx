@@ -6,14 +6,29 @@ import { AdSlot } from "@/components/tools/AdSlot";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { buildMetadata } from "@/lib/seo/metadata";
 import { itemListSchema, breadcrumbSchema } from "@/lib/seo/structured-data";
-import { TOOLS } from "@/lib/tools/tool-registry";
+import Link from "next/link";
+import { TOOLS, toolsByCategory } from "@/lib/tools/tool-registry";
+import { CATEGORY_META, type ToolCategory } from "@/lib/tools/types";
 
 export const metadata: Metadata = buildMetadata({
-  title: `All ${TOOLS.length} Free Online Tools — Image, Text & Developer | DO101`,
+  title: `All ${TOOLS.length} Free Online Tools — PDF, Image & Developer | DO101`,
   description:
-    "Browse every free DO101 tool: image compressor and resizer, JSON formatter, word counter, QR generator, calculators, typing games and more. No sign-up.",
+    "Browse every free DO101 tool: merge and compress PDFs, convert PDF to Word, compress images, format JSON, count words, generate QR codes and more. No sign-up.",
   path: "/tools",
 });
+
+const HUBS: Array<{ category: ToolCategory; href: string }> = [
+  { category: "pdf", href: "/tools/pdf" },
+  { category: "image", href: "/tools/image" },
+  { category: "converter", href: "/tools/converters" },
+  { category: "text", href: "/tools/text" },
+  { category: "developer", href: "/tools/developer" },
+  { category: "seo", href: "/tools/seo" },
+  { category: "qr", href: "/tools/qr-generator" },
+  { category: "datetime", href: "/tools/datetime" },
+  { category: "calculator", href: "/calculators" },
+  { category: "game", href: "/games" },
+];
 
 export default function ToolsPage() {
   return (
@@ -37,11 +52,41 @@ export default function ToolsPage() {
       <header className="mb-8">
         <h1 className="text-3xl sm:text-4xl">Every DO101 tool</h1>
         <p className="mt-2 max-w-2xl text-base font-semibold text-[var(--muted)]">
-          {TOOLS.length} free tools for images, text, code, maths and play. Most of them run
-          entirely in your browser, so your files never leave your device — and none of them need an
-          account.
+          {TOOLS.length} free tools for PDFs, images, documents, text, code, maths and play.
+          Almost every one runs entirely in your browser, so your files never leave your device —
+          and none of them need an account.
         </p>
       </header>
+
+      {/* Real anchor links to every hub, so crawlers reach each category
+          without executing the client-side filter. */}
+      <nav aria-label="Tool categories" className="mb-10">
+        <h2 className="mb-3 text-sm font-extrabold uppercase tracking-widest text-[var(--muted)]">
+          Browse by category
+        </h2>
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {HUBS.map(({ category, href }) => {
+            const meta = CATEGORY_META[category];
+            const count = toolsByCategory(category).length;
+            return (
+              <li key={category}>
+                <Link
+                  href={href}
+                  className="do-card do-card-hover flex h-full flex-col gap-1 p-4"
+                >
+                  <span aria-hidden className="text-2xl">
+                    {meta.icon}
+                  </span>
+                  <span className="text-base font-extrabold">{meta.label}</span>
+                  <span className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
+                    {count} tool{count === 1 ? "" : "s"}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
 
       <Suspense
         fallback={
