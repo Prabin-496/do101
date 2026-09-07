@@ -80,16 +80,22 @@ export function ImageWorkbench({
     }
   }, [first, mode, width, height]);
 
-  // Revoke object URLs when the component unmounts.
+  // Object URLs must be revoked on unmount, and the cleanup has to see the
+  // items that exist *then* — not the empty array from the first render.
+  const itemsRef = React.useRef<Item[]>([]);
   React.useEffect(() => {
-    return () => {
-      items.forEach((item) => {
+    itemsRef.current = items;
+  }, [items]);
+  React.useEffect(
+    () => () => {
+      itemsRef.current.forEach((item) => {
         URL.revokeObjectURL(item.previewUrl);
         if (item.output) URL.revokeObjectURL(item.output.url);
+        item.image.bitmap.close?.();
       });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    },
+    [],
+  );
 
   const addFiles = async (files: File[]) => {
     setLoadError(null);
@@ -117,6 +123,7 @@ export function ImageWorkbench({
     items.forEach((item) => {
       URL.revokeObjectURL(item.previewUrl);
       if (item.output) URL.revokeObjectURL(item.output.url);
+      item.image.bitmap.close?.();
     });
     setItems([]);
     setLoadError(null);
@@ -131,6 +138,7 @@ export function ImageWorkbench({
       if (target) {
         URL.revokeObjectURL(target.previewUrl);
         if (target.output) URL.revokeObjectURL(target.output.url);
+        target.image.bitmap.close?.();
       }
       return prev.filter((p) => p.id !== id);
     });

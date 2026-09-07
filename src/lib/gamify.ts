@@ -25,7 +25,7 @@ function yesterday(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export function getXp(): number {
+function getXp(): number {
   return readLocal<number>(STORAGE_KEYS.xp, 0);
 }
 
@@ -35,7 +35,7 @@ export function addXp(amount: number): number {
   return next;
 }
 
-export function getStreak(): StreakState {
+function getStreak(): StreakState {
   return readLocal<StreakState>(STORAGE_KEYS.streak, {
     lastActive: "",
     current: 0,
@@ -81,6 +81,4 @@ export function saveBest(toolId: string, value: number, higherIsBetter = true): 
   return improved;
 }
 
-export function getBest(toolId: string): number | null {
-  return readLocal<number | null>(STORAGE_KEYS.best(toolId), null);
-}
+/** Components read personal bests through `useLocalValue` so they update live. */
