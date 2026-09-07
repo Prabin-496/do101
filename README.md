@@ -238,6 +238,7 @@ content, real traffic and clean navigation — see
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — Vercel, DNS, HTTPS, env vars
 - [`docs/LAUNCH.md`](docs/LAUNCH.md) — the 30-day plan
 - [`docs/LAUNCH-CHECKLIST.md`](docs/LAUNCH-CHECKLIST.md) — pre-launch checks
+- [`docs/GROWTH.md`](docs/GROWTH.md) — how people find the site: search, AI assistants, earned links
 - [`docs/MARKETING.md`](docs/MARKETING.md) — content and distribution playbook
 
 ## Principles

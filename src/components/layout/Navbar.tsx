@@ -7,15 +7,23 @@ import { useCommandPalette } from "./CommandPalette";
 import { ThemeToggle } from "./ThemeToggle";
 import { StreakBadge } from "./StreakBadge";
 import { Logo } from "./Logo";
+import { ToolsMenu } from "./ToolsMenu";
 import { cn } from "@/lib/utils/cn";
 
 const LINKS = [
   { href: "/tools", label: "Tools", icon: "🧰" },
+  { href: "/tools/pdf", label: "PDF", icon: "📄" },
   { href: "/calculators", label: "Calculators", icon: "🧮" },
   { href: "/games", label: "Games", icon: "🎮" },
   { href: "/ai", label: "AI", icon: "🤖" },
   { href: "/about", label: "About", icon: "💡" },
 ];
+
+/**
+ * On desktop the Tools menu already covers the categories, so the header keeps
+ * only the destinations that are not inside it. The mobile menu lists all of them.
+ */
+const DESKTOP_LINKS = LINKS.filter((l) => !l.href.startsWith("/tools"));
 
 export function Navbar() {
   const pathname = usePathname();
@@ -34,7 +42,10 @@ export function Navbar() {
         <Logo />
 
         <ul className="ml-2 hidden items-center gap-1 md:flex">
-          {LINKS.map((link) => {
+          <li>
+            <ToolsMenu active={pathname.startsWith("/tools")} />
+          </li>
+          {DESKTOP_LINKS.map((link) => {
             const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
             return (
               <li key={link.href}>
