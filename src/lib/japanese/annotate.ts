@@ -1,4 +1,4 @@
-import { KANJI_MAP, WORD_KEYS, WORD_MAP, type KanjiEntry } from "./dictionary";
+import { KANJI_MAP, WORD_KEYS, WORD_MAP, WORDS, type KanjiEntry } from "./dictionary";
 import { hasJapanese, isKana, isKanji, kanaToRomaji, toHiragana } from "./kana";
 
 /**
@@ -34,6 +34,50 @@ export interface Annotation {
 }
 
 
+
+/**
+ * Verb and adjective stems, derived from the dictionary at load.
+ *
+ * Japanese inflects by changing the kana after the kanji: 行く becomes 行きます,
+ * 行きました, 行かない. Listing every form is hopeless, but the kanji and its
+ * reading stay put, so each entry written as "kanji + kana" yields a stem —
+ * 行 reads い — and any kana that follows is the ending. Without this, 行きました
+ * is read as 行 (い) plus きました, which romanises as "i kimashita" rather than
+ * "ikimashita".
+ */
+const STEMS = new Map<string, string>();
+for (const entry of WORDS) {
+  const match = /^([\u4e00-\u9fff]+)([\u3041-\u3096]+)$/.exec(entry.word);
+  if (!match) continue;
+  const [, kanji, tail] = match;
+  if (!entry.reading.endsWith(tail)) continue;
+  const stemReading = entry.reading.slice(0, entry.reading.length - tail.length);
+  if (!stemReading) continue;
+  // The shortest reading wins, which is the plain stem rather than a polite form.
+  const existing = STEMS.get(kanji);
+  if (!existing || stemReading.length < existing.length) STEMS.set(kanji, stemReading);
+}
+
+/**
+ * Kana that end an inflection because they are particles, not okurigana.
+ *
+ * 見に行く is 見 + に (particle) + 行く, not a verb 見に. Stopping here keeps the
+ * ending from swallowing the rest of the sentence.
+ */
+const PARTICLE_STOP = new Set(["は", "が", "を", "に", "へ", "と", "で", "も", "の", "や"]);
+
+/** How much of the kana after a stem belongs to the word. */
+function okurigana(text: string, from: number): string {
+  let taken = "";
+  while (from + taken.length < text.length) {
+    const char = text[from + taken.length];
+    if (!isKana(char)) break;
+    if (PARTICLE_STOP.has(char)) break;
+    taken += char;
+  }
+  return taken;
+}
+
 /**
  * The three particles that are not pronounced as they are written.
  *
@@ -43,6 +87,15 @@ export interface Annotation {
  * を has no other use in modern Japanese, so it is always "o".
  */
 const PARTICLES: Record<string, string> = { は: "wa", へ: "e", を: "o" };
+
+/**
+ * Particles worth breaking a kana run at.
+ *
+ * Only the three above are pronounced irregularly, but splitting all of these
+ * off keeps the romaji readable: 天気がいいですね reads "tenki ga ii desu ne"
+ * rather than running together as "tenki gaiidesune".
+ */
+const SPLIT_PARTICLES = new Set(["は", "が", "を", "に", "へ", "と", "で", "も", "の", "や", "か"]);
 
 const PARTICLE_NOTES: Record<string, string> = {
   は: "topic particle — written は, pronounced \"wa\"",
@@ -71,10 +124,10 @@ export function annotate(text: string): Annotation {
     }
 
     // Longest dictionary match wins, which is what keeps 日本人 from being read
-    // as 日 + 本 + 人.
-    let matched = false;
-    for (const key of WORD_KEYS) {
-      if (!text.startsWith(key, index)) continue;
+    // as 日 + 本 + 人. Multi-character entries go first, then inflected verbs,
+    // then single characters — so 分かりません is not read as 分 ("fun") plus
+    // かりません.
+    const pushWord = (key: string) => {
       const entry = WORD_MAP.get(key)!;
       tokens.push({
         surface: key,
@@ -85,6 +138,44 @@ export function annotate(text: string): Annotation {
         kanji: [...key].filter(isKanji).map((c) => KANJI_MAP.get(c)).filter((k): k is KanjiEntry => !!k),
       });
       index += key.length;
+    };
+
+    let matched = false;
+    for (const key of WORD_KEYS) {
+      if (key.length < 2 || !text.startsWith(key, index)) continue;
+      pushWord(key);
+      matched = true;
+      break;
+    }
+    if (matched) continue;
+
+    // An inflected verb or adjective: known kanji stem plus its okurigana.
+    if (isKanji(char)) {
+      let run = "";
+      while (index + run.length < text.length && isKanji(text[index + run.length])) {
+        run += text[index + run.length];
+      }
+      const stemReading = STEMS.get(run);
+      const ending = stemReading ? okurigana(text, index + run.length) : "";
+      if (stemReading && ending) {
+        const surface = run + ending;
+        const reading = stemReading + ending;
+        tokens.push({
+          surface,
+          reading,
+          romaji: kanaToRomaji(reading),
+          meaning: WORD_MAP.get(surface)?.meaning,
+          source: "word",
+          kanji: [...run].map((c) => KANJI_MAP.get(c)).filter((k): k is KanjiEntry => !!k),
+        });
+        index += surface.length;
+        continue;
+      }
+    }
+
+    for (const key of WORD_KEYS) {
+      if (key.length !== 1 || !text.startsWith(key, index)) continue;
+      pushWord(key);
       matched = true;
       break;
     }
@@ -95,14 +186,14 @@ export function annotate(text: string): Annotation {
       // it can be read correctly: 駅はどこ is "eki wa doko", not "eki hadoko".
       const previous = tokens[tokens.length - 1];
       if (
-        PARTICLES[char] &&
+        SPLIT_PARTICLES.has(char) &&
         previous &&
         (previous.source === "word" || previous.source === "kanji")
       ) {
         tokens.push({
           surface: char,
           reading: char,
-          romaji: PARTICLES[char],
+          romaji: PARTICLES[char] ?? kanaToRomaji(char),
           meaning: PARTICLE_NOTES[char],
           source: "kana",
         });

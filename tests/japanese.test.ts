@@ -5,7 +5,7 @@ import {
 } from "../src/lib/japanese/kana";
 import { annotate, kanjiIn } from "../src/lib/japanese/annotate";
 import { KANJI, WORDS } from "../src/lib/japanese/dictionary";
-import { splitForTranslation } from "../src/lib/japanese/translate";
+import { splitForTranslation, worthTranslating } from "../src/lib/japanese/translate";
 
 describe("kana to romaji", () => {
   it("romanises everyday words in modified Hepburn", () => {
@@ -258,5 +258,83 @@ describe("translation chunking", () => {
     const chunks = splitForTranslation("word ".repeat(300));
     expect(chunks.length).toBeGreaterThan(1);
     for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(480);
+  });
+});
+
+describe("whole-sentence readings", () => {
+  /**
+   * Real sentences, with the reading and romanisation a learner should see.
+   * Each one previously came out wrong in a different way — a greeting
+   * colliding with a date, a missing word splitting into single kanji, an
+   * inflected verb breaking apart — so they stay here as regressions.
+   */
+  const CASES: Array<[japanese: string, kana: string, romaji: string]> = [
+    [
+      "私は毎日日本語を勉強しています。",
+      "わたしはまいにちにほんごをべんきょうしています。",
+      "watashi wa mainichi nihongo o benkyou shiteimasu。",
+    ],
+    ["最寄りの駅はどこですか。", "もよりのえきはどこですか。", "moyori no eki wa dokodesuka。"],
+    // 今日は must read "kyou wa" (today), not "konnichiha" (hello).
+    ["今日は天気がいいですね。", "きょうはてんきがいいですね。", "kyou wa tenki ga iidesune。"],
+    [
+      "この電車は東京へ行きますか。",
+      "このでんしゃはとうきょうへいきますか。",
+      "kono densha wa toukyou e ikimasu ka。",
+    ],
+    // 彼女 is one word; reading it as 彼 + 女 gives "onna" and loses the meaning.
+    [
+      "彼女は大学で科学を教えています。",
+      "かのじょはだいがくでかがくをおしえています。",
+      "kanojo wa daigaku de kagaku o oshieteimasu。",
+    ],
+    // 行きました is an inflection of 行く, not 行 followed by きました.
+    [
+      "友達と映画を見に行きました。",
+      "ともだちとえいがをみにいきました。",
+      "tomodachi to eiga o mi ni ikimashita。",
+    ],
+    // 三時 is "sanji", not 三 followed by 時 read as "toki".
+    ["会議は三時に始まります。", "かいぎはさんじにはじまります。", "kaigi wa sanji ni hajimarimasu。"],
+  ];
+
+  it.each(CASES)("reads %s", (japanese, kana, romaji) => {
+    const result = annotate(japanese);
+    expect(result.hiragana).toBe(kana);
+    expect(result.romaji).toBe(romaji);
+  });
+
+  it("leaves nothing unread in these sentences", () => {
+    for (const [japanese] of CASES) {
+      expect(annotate(japanese).unknown, japanese).toEqual([]);
+    }
+  });
+
+  it("reads inflections of a verb it only knows in dictionary form", () => {
+    // 書く is listed; none of these forms are.
+    for (const [text, reading] of [
+      ["書きます", "かきます"],
+      ["書きました", "かきました"],
+      ["書かない", "かかない"],
+      ["書いています", "かいています"],
+    ] as const) {
+      expect(annotate(text).hiragana, text).toBe(reading);
+    }
+  });
+
+  it("does not let okurigana swallow a following particle", () => {
+    // 見に行く is 見 + に + 行く, so the ending stops at the particle.
+    const tokens = annotate("見に行く").tokens;
+    expect(tokens.map((t) => t.surface)).toEqual(["見", "に", "行く"]);
+  });
+});
+
+describe("translation cache", () => {
+  it("skips fragments too short to be worth a request", () => {
+    expect(worthTranslating("", "en-ja")).toBe(false);
+    expect(worthTranslating("t", "en-ja")).toBe(false);
+    expect(worthTranslating("go", "en-ja")).toBe(true);
+    // A single kanji is a whole word, so Japanese needs a lower bar.
+    expect(worthTranslating("駅", "ja-en")).toBe(true);
   });
 });

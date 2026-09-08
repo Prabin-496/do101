@@ -14,7 +14,7 @@ export const JAPANESE_TOOLS: Tool[] = [
     name: "Japanese ⇄ English Translator",
     short: "Translate both ways, with furigana, romaji and typing help.",
     long:
-      "Translate between English and Japanese, then see how to actually read and type the result: the reading printed above each word, the whole thing in hiragana, katakana and Hepburn romaji, a kanji breakdown with meanings and on/kun readings, and the exact keystrokes for a Japanese IME. Hear it read aloud with your device's own voice.",
+      "Translates as you type, in both directions, with the romaji printed directly under the Japanese the way you would expect. Every word is broken out with its reading above it, its pronunciation below, and what it means — so a sentence full of kanji is still readable if you cannot read kanji yet. Tap any word for its on and kun readings and the exact keys to type it on a Japanese IME.",
     category: "learn",
     route: "/tools/japanese-translator",
     keywords: [
@@ -35,24 +35,26 @@ export const JAPANESE_TOOLS: Tool[] = [
     seoDescription:
       "Translate English and Japanese both ways, with readings above each word, hiragana, katakana, Hepburn romaji, kanji meanings and keyboard typing help. Free.",
     steps: [
-      "Choose the direction, or paste your text and let the tool spot it.",
-      "Press Translate.",
-      "Read the result with furigana above each word, plus full hiragana and romaji.",
-      "Check the kanji breakdown and the keystrokes for typing it yourself.",
+      "Start typing — the translation appears on its own, with romaji underneath.",
+      "Read the word-by-word strip: reading on top, the word, how to say it, what it means.",
+      "Tap any word for its kanji readings and the keys you would press to type it.",
+      "Copy the hiragana, katakana or romaji, or press Hear it to listen.",
     ],
     features: [
-      "Both directions, English to Japanese and Japanese to English",
-      "Reading printed above each word, the way furigana is set",
-      "Full hiragana, katakana and Hepburn romaji",
-      "Kanji meanings with on and kun readings",
-      "Exact keystrokes for typing it on a Japanese IME",
+      "Translates live as you type, both directions, with no button to press",
+      "Romaji printed directly beneath the Japanese, where you expect to find it",
+      "Word by word: reading above, pronunciation below, meaning underneath",
+      "Handles inflected verbs, so 行きました reads ikimashita rather than i kimashita",
+      "Reads は, へ and を as wa, e and o when they are particles",
+      "Kanji cards with on and kun readings and what to type for each",
+      "Keystrokes for the whole sentence on a Japanese IME",
       "Read aloud using your device's own Japanese voice",
       "Marks which readings are certain and which are approximate",
     ],
     faqs: [
       {
         q: "Is my text sent anywhere?",
-        a: "The translation is, and only the translation. Machine translation needs a model far too large to run in a web page, so pressing Translate sends your text to MyMemory, a free public translation service, directly from your browser. Everything else — the readings, romaji, kanji breakdown and typing guide — runs on your device. Do not paste anything confidential.",
+        a: "The translation is, and only the translation. Machine translation needs a model far too large to run in a web page, so when you pause typing your text is sent to MyMemory, a free public translation service, directly from your browser. Everything else — the readings, romaji, kanji breakdown and typing guide — runs on your device. Do not paste anything confidential, and switch off \"Translate as I type\" if you would rather send text only when you choose.",
       },
       {
         q: "How accurate is the translation?",
@@ -65,6 +67,10 @@ export const JAPANESE_TOOLS: Tool[] = [
       {
         q: "Why is there no furigana for some words?",
         a: "Because the word is not in the bundled vocabulary. Generating readings for arbitrary Japanese needs a morphological analyser and a dictionary of hundreds of thousands of entries — a multi-megabyte download. Rather than ship that or guess, the tool marks what it does not know.",
+      },
+      {
+        q: "Does translating as I type use up a free quota?",
+        a: "It could, so the tool is built not to. It waits for a pause in your typing rather than firing on every keystroke, ignores fragments too short to be meaningful, and reuses any phrase it has already translated — so backspacing and retyping costs nothing. You can also turn live translation off and translate on demand.",
       },
       {
         q: "How do I type Japanese on my keyboard?",

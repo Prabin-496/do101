@@ -139,16 +139,51 @@ function decodeEntities(text: string): string {
     .replace(/&gt;/g, ">");
 }
 
+/**
+ * Results already fetched this session.
+ *
+ * Translating as the reader types would otherwise send a request for every
+ * pause, and the free tier is a daily word quota. Backspacing, retyping the
+ * same phrase or switching direction and back all hit this instead of the
+ * network, which is what makes live translation affordable at all.
+ */
+const cache = new Map<string, TranslationResult>();
+const CACHE_LIMIT = 300;
+
+function cacheKey(text: string, direction: Direction): string {
+  return `${direction}|${text.trim()}`;
+}
+
+export function cached(text: string, direction: Direction): TranslationResult | undefined {
+  return cache.get(cacheKey(text, direction));
+}
+
+function remember(text: string, direction: Direction, result: TranslationResult): void {
+  if (cache.size >= CACHE_LIMIT) {
+    // Oldest first; Map preserves insertion order.
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
+  }
+  cache.set(cacheKey(text, direction), result);
+}
+
 export async function translate(
   text: string,
   direction: Direction,
   signal?: AbortSignal,
 ): Promise<TranslationResult> {
+  const hit = cache.get(cacheKey(text, direction));
+  if (hit) return hit;
+
   const chunks = splitForTranslation(text);
   if (chunks.length === 0) {
     return { text: "", match: 0, alternatives: [], provider: "MyMemory" };
   }
-  if (chunks.length === 1) return translateChunk(chunks[0], direction, signal);
+  if (chunks.length === 1) {
+    const single = await translateChunk(chunks[0], direction, signal);
+    remember(text, direction, single);
+    return single;
+  }
 
   // Sequential rather than parallel: the free tier rate-limits bursts, and a
   // partial failure halfway through a paragraph is worse than being slower.
@@ -157,12 +192,27 @@ export async function translate(
     parts.push(await translateChunk(chunk, direction, signal));
   }
 
-  return {
+  const joined: TranslationResult = {
     text: parts.map((part) => part.text).join(direction === "en-ja" ? "" : " "),
     match: parts.reduce((total, part) => total + part.match, 0) / parts.length,
     alternatives: [],
     provider: "MyMemory",
   };
+  remember(text, direction, joined);
+  return joined;
+}
+
+/**
+ * Whether a fragment is worth spending a request on.
+ *
+ * Typing "th" on the way to "there" should not cost a translation, and a
+ * trailing half-word usually comes back as nonsense anyway.
+ */
+export function worthTranslating(text: string, direction: Direction): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  // Japanese packs far more meaning per character, so it needs a lower bar.
+  return direction === "ja-en" ? trimmed.length >= 1 : trimmed.length >= 2;
 }
 
 /** How much to trust a result, in words rather than a bare number. */
