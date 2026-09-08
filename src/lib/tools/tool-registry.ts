@@ -3,6 +3,7 @@ import { PDF_TOOLS } from "./registry/pdf";
 import { IMAGE_TOOLS } from "./registry/image";
 import { CONVERTERS_TOOLS } from "./registry/converters";
 import { TEXT_TOOLS } from "./registry/text";
+import { WRITING_TOOLS } from "./registry/writing";
 import { DEVELOPER_TOOLS } from "./registry/developer";
 import { SEO_TOOLS } from "./registry/seo";
 import { QR_TOOLS } from "./registry/qr";
@@ -23,6 +24,7 @@ export const TOOLS: Tool[] = [
   ...PDF_TOOLS,
   ...IMAGE_TOOLS,
   ...CONVERTERS_TOOLS,
+  ...WRITING_TOOLS,
   ...TEXT_TOOLS,
   ...DEVELOPER_TOOLS,
   ...SEO_TOOLS,

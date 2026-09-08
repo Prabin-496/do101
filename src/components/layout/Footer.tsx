@@ -11,6 +11,7 @@ const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string
       { href: "/tools/pdf", label: "PDF tools" },
       { href: "/tools/image", label: "Image tools" },
       { href: "/tools/converters", label: "Converters" },
+      { href: "/writing", label: "Writing tools" },
       { href: "/tools/text", label: "Text tools" },
       { href: "/tools/developer", label: "Developer tools" },
       { href: "/tools/seo", label: "SEO tools" },

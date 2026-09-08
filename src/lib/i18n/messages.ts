@@ -12,6 +12,7 @@ export interface Messages {
   "nav.pdf": string;
   "nav.news": string;
   "nav.games": string;
+  "nav.writing": string;
   "nav.calculators": string;
   "nav.ai": string;
   "nav.about": string;
@@ -51,6 +52,7 @@ const en: Messages = {
   "nav.pdf": "PDF",
   "nav.news": "News",
   "nav.games": "Games",
+  "nav.writing": "Writing",
   "nav.calculators": "Calculators",
   "nav.ai": "AI",
   "nav.about": "About",
@@ -92,6 +94,7 @@ const ja: Messages = {
   "nav.pdf": "PDF",
   "nav.news": "ニュース",
   "nav.games": "ゲーム",
+  "nav.writing": "ライティング",
   "nav.calculators": "計算ツール",
   "nav.ai": "AI",
   "nav.about": "DO101について",
@@ -133,6 +136,7 @@ const es: Messages = {
   "nav.pdf": "PDF",
   "nav.news": "Noticias",
   "nav.games": "Juegos",
+  "nav.writing": "Escritura",
   "nav.calculators": "Calculadoras",
   "nav.ai": "IA",
   "nav.about": "Acerca de",
@@ -174,6 +178,7 @@ const fr: Messages = {
   "nav.pdf": "PDF",
   "nav.news": "Actualités",
   "nav.games": "Jeux",
+  "nav.writing": "Rédaction",
   "nav.calculators": "Calculatrices",
   "nav.ai": "IA",
   "nav.about": "À propos",
@@ -215,6 +220,7 @@ const de: Messages = {
   "nav.pdf": "PDF",
   "nav.news": "Nachrichten",
   "nav.games": "Spiele",
+  "nav.writing": "Schreiben",
   "nav.calculators": "Rechner",
   "nav.ai": "KI",
   "nav.about": "Über uns",
@@ -256,6 +262,7 @@ const pt: Messages = {
   "nav.pdf": "PDF",
   "nav.news": "Notícias",
   "nav.games": "Jogos",
+  "nav.writing": "Escrita",
   "nav.calculators": "Calculadoras",
   "nav.ai": "IA",
   "nav.about": "Sobre",
@@ -297,6 +304,7 @@ const hi: Messages = {
   "nav.pdf": "PDF",
   "nav.news": "समाचार",
   "nav.games": "गेम्स",
+  "nav.writing": "लेखन",
   "nav.calculators": "कैलकुलेटर",
   "nav.ai": "एआई",
   "nav.about": "परिचय",
@@ -338,6 +346,7 @@ const ne: Messages = {
   "nav.pdf": "PDF",
   "nav.news": "समाचार",
   "nav.games": "खेलहरू",
+  "nav.writing": "लेखन",
   "nav.calculators": "क्याल्कुलेटर",
   "nav.ai": "एआई",
   "nav.about": "हाम्रोबारे",
@@ -379,6 +388,7 @@ const zh: Messages = {
   "nav.pdf": "PDF",
   "nav.news": "资讯",
   "nav.games": "游戏",
+  "nav.writing": "写作",
   "nav.calculators": "计算器",
   "nav.ai": "AI",
   "nav.about": "关于",
@@ -419,6 +429,7 @@ const ko: Messages = {
   "nav.pdf": "PDF",
   "nav.news": "뉴스",
   "nav.games": "게임",
+  "nav.writing": "글쓰기",
   "nav.calculators": "계산기",
   "nav.ai": "AI",
   "nav.about": "소개",
@@ -459,6 +470,7 @@ const id: Messages = {
   "nav.pdf": "PDF",
   "nav.news": "Berita",
   "nav.games": "Permainan",
+  "nav.writing": "Penulisan",
   "nav.calculators": "Kalkulator",
   "nav.ai": "AI",
   "nav.about": "Tentang",
@@ -500,6 +512,7 @@ const ar: Messages = {
   "nav.pdf": "PDF",
   "nav.news": "الأخبار",
   "nav.games": "الألعاب",
+  "nav.writing": "الكتابة",
   "nav.calculators": "الحاسبات",
   "nav.ai": "الذكاء الاصطناعي",
   "nav.about": "عن الموقع",

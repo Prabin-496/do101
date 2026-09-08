@@ -325,3 +325,41 @@ h1, h2, h3, h4 {
   border-color: var(--border);
 }
 .leaflet-bar a:hover { background: var(--panel); }
+
+/* ---------------- writing editor ---------------- */
+/* The highlight overlay and the textarea have to agree on every metric that
+   affects where a character lands, or the underlines drift from the words. */
+.do-editor-layer {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  border: 0;
+  min-height: 300px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.75;
+  letter-spacing: normal;
+  tab-size: 4;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+  box-sizing: border-box;
+}
+.do-editor-layer:focus { outline: none; }
+
+.do-mark {
+  color: inherit;
+  background: transparent;
+  border-radius: 3px;
+  padding-bottom: 1px;
+  background-repeat: repeat-x;
+  background-position: 0 100%;
+  background-size: 100% 3px;
+}
+.do-mark-error { background-image: linear-gradient(var(--cherry), var(--cherry)); }
+.do-mark-warning { background-image: linear-gradient(var(--fire), var(--fire)); }
+.do-mark-suggestion { background-image: linear-gradient(var(--sky), var(--sky)); }
+.do-mark-active {
+  background-color: var(--sun-soft);
+  box-shadow: 0 0 0 2px var(--sun-soft);
+}

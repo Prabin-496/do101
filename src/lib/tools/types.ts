@@ -11,6 +11,7 @@ export type ToolCategory =
   | "learn"
   | "travel"
   | "calculator"
+  | "writing"
   | "productivity"
   | "game";
 
@@ -82,6 +83,13 @@ export const CATEGORY_META: Record<
     icon: "🔄",
     blurb: "Move between formats: documents, spreadsheets, images and data.",
     accent: "sky",
+  },
+  writing: {
+    label: "Writing",
+    slug: "writing",
+    icon: "📝",
+    blurb: "Proofread, tighten, cite and check your essays — free, and nothing is uploaded.",
+    accent: "grape",
   },
   text: {
     label: "Text",

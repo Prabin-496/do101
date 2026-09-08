@@ -17,6 +17,7 @@ const LINKS: Array<{ href: string; key: MessageKey; icon: string }> = [
   { href: "/tools", key: "nav.tools", icon: "🧰" },
   { href: "/tools/pdf", key: "nav.pdf", icon: "📄" },
   { href: "/news", key: "nav.news", icon: "📰" },
+  { href: "/writing", key: "nav.writing", icon: "📝" },
   { href: "/calculators", key: "nav.calculators", icon: "🧮" },
   { href: "/games", key: "nav.games", icon: "🎮" },
   { href: "/ai", key: "nav.ai", icon: "🤖" },
