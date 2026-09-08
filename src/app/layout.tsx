@@ -5,6 +5,8 @@ import "./globals.css";
 import { SITE, absoluteUrl } from "@/lib/site";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { CommandPaletteProvider } from "@/components/layout/CommandPalette";
+import { LanguageProvider } from "@/components/layout/LanguageProvider";
+import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -65,19 +67,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning className={`${nunito.variable} ${mono.variable}`}>
       <body className="flex min-h-dvh flex-col antialiased">
         <ThemeProvider>
-          <CommandPaletteProvider>
+          <LanguageProvider>
+            <CommandPaletteProvider>
             <a
               href="#main"
               className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-[var(--grass)] focus:px-4 focus:py-2 focus:font-extrabold focus:text-white"
             >
               Skip to content
             </a>
-            <Navbar />
-            <main id="main" className="flex-1">
-              {children}
-            </main>
-            <Footer />
-          </CommandPaletteProvider>
+              <Navbar />
+              <main id="main" className="flex-1">
+                {children}
+              </main>
+              <Footer />
+              {/* Always reachable, even deep inside a long tool page. */}
+              <LanguageSwitcher floating />
+            </CommandPaletteProvider>
+          </LanguageProvider>
         </ThemeProvider>
         <JsonLd data={[websiteSchema(), organizationSchema()]} />
         {SITE.adsenseClient ? (

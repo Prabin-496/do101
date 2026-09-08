@@ -8,16 +8,19 @@ import { ThemeToggle } from "./ThemeToggle";
 import { StreakBadge } from "./StreakBadge";
 import { Logo } from "./Logo";
 import { ToolsMenu } from "./ToolsMenu";
+import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useLanguage } from "./LanguageProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { cn } from "@/lib/utils/cn";
 
-const LINKS = [
-  { href: "/tools", label: "Tools", icon: "🧰" },
-  { href: "/tools/pdf", label: "PDF", icon: "📄" },
-  { href: "/news", label: "News", icon: "📰" },
-  { href: "/calculators", label: "Calculators", icon: "🧮" },
-  { href: "/games", label: "Games", icon: "🎮" },
-  { href: "/ai", label: "AI", icon: "🤖" },
-  { href: "/about", label: "About", icon: "💡" },
+const LINKS: Array<{ href: string; key: MessageKey; icon: string }> = [
+  { href: "/tools", key: "nav.tools", icon: "🧰" },
+  { href: "/tools/pdf", key: "nav.pdf", icon: "📄" },
+  { href: "/news", key: "nav.news", icon: "📰" },
+  { href: "/calculators", key: "nav.calculators", icon: "🧮" },
+  { href: "/games", key: "nav.games", icon: "🎮" },
+  { href: "/ai", key: "nav.ai", icon: "🤖" },
+  { href: "/about", key: "nav.about", icon: "💡" },
 ];
 
 /**
@@ -29,6 +32,7 @@ const DESKTOP_LINKS = LINKS.filter((l) => !l.href.startsWith("/tools"));
 export function Navbar() {
   const pathname = usePathname();
   const { open } = useCommandPalette();
+  const { t } = useLanguage();
   // Storing the route the menu was opened on closes it automatically on
   // navigation, with no effect and no stale-open flash.
   const [openedOn, setOpenedOn] = React.useState<string | null>(null);
@@ -59,7 +63,7 @@ export function Navbar() {
                       : "text-[var(--muted)] hover:bg-[var(--panel)] hover:text-[var(--ink)]",
                   )}
                 >
-                  {link.label}
+                  {t(link.key)}
                 </Link>
               </li>
             );
@@ -71,15 +75,16 @@ export function Navbar() {
           <button
             type="button"
             onClick={open}
-            aria-label="Search tools (Command or Control + K)"
+            aria-label={`${t("nav.search")} (Command or Control + K)`}
             className="flex h-10 items-center gap-2 rounded-xl border-2 border-[var(--border)] px-3 text-sm font-bold text-[var(--muted)] transition-colors hover:bg-[var(--panel)]"
           >
             <span aria-hidden>🔎</span>
-            <span className="hidden lg:inline">Search tools</span>
+            <span className="hidden lg:inline">{t("nav.search")}</span>
             <kbd className="hidden rounded-md bg-[var(--panel)] px-1.5 py-0.5 text-[10px] font-extrabold lg:inline">
               ⌘K
             </kbd>
           </button>
+          <LanguageSwitcher />
           <ThemeToggle />
           <button
             type="button"
@@ -88,7 +93,7 @@ export function Navbar() {
             onClick={() => setOpenedOn(menuOpen ? null : pathname)}
             className="grid h-10 w-10 place-items-center rounded-xl border-2 border-[var(--border)] md:hidden"
           >
-            <span className="sr-only">{menuOpen ? "Close menu" : "Open menu"}</span>
+            <span className="sr-only">{menuOpen ? t("nav.close") : t("nav.menu")}</span>
             <span aria-hidden>{menuOpen ? "✕" : "☰"}</span>
           </button>
         </div>
@@ -104,7 +109,7 @@ export function Navbar() {
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-base font-extrabold hover:bg-[var(--panel)]"
                 >
                   <span aria-hidden>{link.icon}</span>
-                  {link.label}
+                  {t(link.key)}
                 </Link>
               </li>
             ))}

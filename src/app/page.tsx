@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { HomeSearch } from "@/components/layout/HomeSearch";
+import { T } from "@/components/layout/HeroCopy";
 import { ButtonLink } from "@/components/ui/Button";
 import { ToolCard } from "@/components/tools/ToolCard";
 import { AdSlot } from "@/components/tools/AdSlot";
@@ -53,45 +54,43 @@ export default function HomePage() {
           </p>
 
           <h1 className="text-4xl leading-[1.05] sm:text-6xl">
-            Do more.{" "}
-            <span className="text-[var(--grass)]">Simply.</span>
+            {/* Server-rendered English stays in the markup for search engines;
+                the client swaps in the visitor's language after hydration. */}
+            <T k="hero.tagline" />
           </h1>
 
           <p className="mx-auto mt-4 max-w-xl text-lg font-semibold text-[var(--muted)]">
-            Merge a PDF, compress a photo, convert a file, format some JSON, settle a calculation —
-            {" "}
-            <strong className="text-[var(--ink)]">free, with no sign-up</strong>. Almost everything
-            runs inside your browser, so your files are never uploaded.
+            <T k="hero.subtitle" />
           </p>
 
           <div className="mt-8">
             <p className="mb-3 text-sm font-extrabold uppercase tracking-widest text-[var(--muted)]">
-              What do you want to do?
+              <T k="hero.prompt" />
             </p>
             <HomeSearch />
           </div>
 
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <ButtonLink href="/tools/pdf" tone="grass" size="lg">
-              📄 PDF tools
+              📄 <T k="hero.browsePdf" />
             </ButtonLink>
             <ButtonLink href="/tools" tone="sky" size="lg">
-              Browse all {TOOLS.length}
+              <T k="hero.browseAll" /> {TOOLS.length}
             </ButtonLink>
             <ButtonLink href="/ai" tone="panel" size="lg">
-              Ask DO101 AI
+              <T k="hero.askAi" />
             </ButtonLink>
           </div>
 
           <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-extrabold text-[var(--muted)]">
             <li className="flex items-center gap-1.5">
-              <span aria-hidden>🔒</span> No upload — files stay on your device
+              <span aria-hidden>🔒</span> <T k="hero.noUpload" />
             </li>
             <li className="flex items-center gap-1.5">
-              <span aria-hidden>🙅</span> No account, no watermark
+              <span aria-hidden>🙅</span> <T k="hero.noAccount" />
             </li>
             <li className="flex items-center gap-1.5">
-              <span aria-hidden>♾️</span> No file limits or credits
+              <span aria-hidden>♾️</span> <T k="hero.noLimits" />
             </li>
           </ul>
         </div>

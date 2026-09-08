@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { T } from "./HeroCopy";
 
 export function Logo({ href = "/", showTagline = false }: { href?: string; showTagline?: boolean }) {
   return (
@@ -13,7 +16,7 @@ export function Logo({ href = "/", showTagline = false }: { href?: string; showT
         <span className="block text-lg font-extrabold tracking-tight">DO101</span>
         {showTagline ? (
           <span className="block text-[11px] font-extrabold uppercase tracking-widest text-[var(--muted)]">
-            Do more. Simply.
+            <T k="footer.tagline" />
           </span>
         ) : null}
       </span>

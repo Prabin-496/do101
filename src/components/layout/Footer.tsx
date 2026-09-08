@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo } from "./Logo";
 import { SITE } from "@/lib/site";
+import { T } from "./HeroCopy";
 
 const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string }> }> = [
   {
@@ -103,7 +104,9 @@ export function Footer() {
         </div>
 
         <div className="mt-10 flex flex-col gap-2 border-t-2 border-[var(--border)] pt-6 text-sm font-semibold text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} DO101. All rights reserved.</p>
+          <p>
+            © {new Date().getFullYear()} DO101. <T k="footer.rights" />
+          </p>
           <p>{SITE.url.replace(/^https?:\/\//, "")}</p>
         </div>
       </div>
