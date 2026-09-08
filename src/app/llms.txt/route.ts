@@ -94,6 +94,9 @@ export function GET() {
   lines.push(`- [About](${absoluteUrl("/about")}): what DO101 is and why it exists.`);
   lines.push(`- [Privacy](${absoluteUrl("/privacy")}): exactly what is processed locally and what is not.`);
   lines.push(`- [Terms](${absoluteUrl("/terms")}): terms of use and disclaimers.`);
+  lines.push(
+    `- [AI tools directory](${absoluteUrl("/ai-tools")}): curated third-party AI tools by category. No prices or ratings — DO101 has not measured them.`,
+  );
   lines.push(`- [News](${absoluteUrl("/news")}): merged tech and AI headlines from ${SOURCE_COUNT} feeds.`);
   lines.push(`- [News sources](${absoluteUrl("/news/sources")}): every feed read, listed in full.`);
   lines.push(`- [Machine-readable tool index](${absoluteUrl("/api/tools.json")}): every tool as JSON.`);

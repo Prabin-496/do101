@@ -17,6 +17,7 @@ const STATIC_ROUTES: Array<{
   { path: "/games", priority: 0.8, changeFrequency: "weekly" },
   { path: "/news", priority: 0.9, changeFrequency: "hourly" },
   { path: "/news/sources", priority: 0.4, changeFrequency: "monthly" },
+  { path: "/ai-tools", priority: 0.8, changeFrequency: "monthly" },
   { path: "/ai", priority: 0.6, changeFrequency: "monthly" },
   { path: "/about", priority: 0.5, changeFrequency: "monthly" },
   { path: "/contact", priority: 0.4, changeFrequency: "yearly" },

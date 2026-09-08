@@ -54,6 +54,7 @@ const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string
     links: [
       { href: "/about", label: "About" },
       { href: "/ai", label: "DO101 AI" },
+      { href: "/ai-tools", label: "AI tools directory" },
       { href: "/calculators", label: "Calculators" },
       { href: "/contact", label: "Contact" },
       { href: "/sitemap.xml", label: "Sitemap" },

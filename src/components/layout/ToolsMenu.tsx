@@ -28,6 +28,7 @@ const SHORTCUTS = [
   { href: "/tools/json-formatter", label: "Format JSON" },
   { href: "/tools/digital-clock", label: "Full-screen clock" },
   { href: "/tools/earth-globe", label: "3D Earth globe" },
+  { href: "/ai-tools", label: "AI tools directory" },
 ];
 
 /**
