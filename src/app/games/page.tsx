@@ -11,10 +11,38 @@ import { toolsByCategory } from "@/lib/tools/tool-registry";
 
 const games = toolsByCategory("game");
 
+/** Grouped by what each one actually measures, rather than one long list. */
+const GROUPS = [
+  {
+    title: "Speed and reflexes",
+    icon: "⚡",
+    blurb: "How fast can you react, click and aim?",
+    ids: ["reaction-test", "aim-trainer", "click-speed-test", "typing-test", "typing-battle"],
+  },
+  {
+    title: "Memory",
+    icon: "🧠",
+    blurb: "How much can you hold in your head at once?",
+    ids: ["memory-test", "number-memory", "visual-memory", "chimp-test"],
+  },
+  {
+    title: "Focus and perception",
+    icon: "👁️",
+    blurb: "Attention, colour discrimination and cognitive control.",
+    ids: ["color-match", "color-vision"],
+  },
+  {
+    title: "Puzzles and words",
+    icon: "🧩",
+    blurb: "Slower games for when you want to think rather than twitch.",
+    ids: ["2048", "math-sprint", "word-scramble"],
+  },
+];
+
 export const metadata: Metadata = buildMetadata({
-  title: "Free Browser Games — Typing, Reaction & Memory | DO101",
+  title: "14 Free Browser Games — Typing, Memory & Reflex | DO101",
   description:
-    "Play free browser games at DO101: a typing speed test, live 1v1 Typing Battle, a reaction time test and a sequence memory game. No sign-up, scores saved locally.",
+    "14 free browser games: typing speed test, 1v1 typing battle, reaction time, aim trainer, click speed, memory tests, Stroop test, maths sprint and 2048. No sign-up.",
   path: "/games",
 });
 
@@ -42,9 +70,9 @@ export default function GamesPage() {
           Games <span aria-hidden>🎮</span>
         </h1>
         <p className="mt-2 max-w-2xl text-base font-semibold text-[var(--muted)]">
-          Four quick browser games that measure something real: how fast you type, how quickly you
-          react, and how much you can hold in your head. Your best scores are saved on your own
-          device — no account, no leaderboard full of strangers.
+          Fourteen quick browser games that measure something real: how fast you type, how quickly
+          you react, how sharp your eyes are and how much you can hold in your head. Every best
+          score is saved on your own device — no account, no leaderboard full of strangers.
         </p>
       </header>
 
@@ -74,11 +102,23 @@ export default function GamesPage() {
         </Link>
       </section>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {games.map((game) => (
-          <ToolCard key={game.id} tool={game} />
-        ))}
-      </div>
+      {GROUPS.map((group) => {
+        const inGroup = games.filter((game) => group.ids.includes(game.id));
+        if (!inGroup.length) return null;
+        return (
+          <section key={group.title} aria-labelledby={`group-${group.title}`} className="mb-10">
+            <h2 id={`group-${group.title}`} className="mb-1 text-2xl">
+              {group.icon} {group.title}
+            </h2>
+            <p className="mb-4 text-sm font-semibold text-[var(--muted)]">{group.blurb}</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {inGroup.map((game) => (
+                <ToolCard key={game.id} tool={game} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
 
       <AdSlot slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_GAMES} className="mt-10" />
 
