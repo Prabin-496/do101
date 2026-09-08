@@ -4,6 +4,8 @@ import { IMAGE_TOOLS } from "./registry/image";
 import { CONVERTERS_TOOLS } from "./registry/converters";
 import { TEXT_TOOLS } from "./registry/text";
 import { WRITING_TOOLS } from "./registry/writing";
+import { PRODUCTIVITY_TOOLS } from "./registry/productivity";
+import { JAPANESE_TOOLS } from "./registry/japanese";
 import { DEVELOPER_TOOLS } from "./registry/developer";
 import { SEO_TOOLS } from "./registry/seo";
 import { QR_TOOLS } from "./registry/qr";
@@ -25,6 +27,8 @@ export const TOOLS: Tool[] = [
   ...IMAGE_TOOLS,
   ...CONVERTERS_TOOLS,
   ...WRITING_TOOLS,
+  ...PRODUCTIVITY_TOOLS,
+  ...JAPANESE_TOOLS,
   ...TEXT_TOOLS,
   ...DEVELOPER_TOOLS,
   ...SEO_TOOLS,
