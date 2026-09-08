@@ -8,6 +8,7 @@ import { SEO_TOOLS } from "./registry/seo";
 import { QR_TOOLS } from "./registry/qr";
 import { GENERATORS_TOOLS } from "./registry/generators";
 import { DATETIME_TOOLS } from "./registry/datetime";
+import { LEARN_TOOLS } from "./registry/learn";
 import { CALCULATORS_TOOLS } from "./registry/calculators";
 import { GAMES_TOOLS } from "./registry/games";
 
@@ -28,6 +29,7 @@ export const TOOLS: Tool[] = [
   ...QR_TOOLS,
   ...GENERATORS_TOOLS,
   ...DATETIME_TOOLS,
+  ...LEARN_TOOLS,
   ...CALCULATORS_TOOLS,
   ...GAMES_TOOLS,
 ];

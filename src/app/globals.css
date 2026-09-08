@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -306,3 +307,21 @@ h1, h2, h3, h4 {
 @media (prefers-reduced-motion: reduce) {
   .flip-anim { display: none; }
 }
+
+/* Leaflet sits inside DO101 cards, so its chrome follows the theme. */
+.leaflet-container {
+  background: var(--panel);
+  font-family: inherit;
+}
+.leaflet-control-attribution {
+  background: var(--bg) !important;
+  color: var(--muted) !important;
+  font-size: 10px;
+}
+.leaflet-control-attribution a { color: var(--sky); }
+.leaflet-bar a {
+  background: var(--bg);
+  color: var(--ink);
+  border-color: var(--border);
+}
+.leaflet-bar a:hover { background: var(--panel); }

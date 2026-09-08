@@ -29,6 +29,8 @@ const CATEGORY_LINKS = [
   { key: "seo", href: "/tools/seo" },
   { key: "calculator", href: "/calculators" },
   { key: "datetime", href: "/tools/datetime" },
+  { key: "learn", href: "/tools/earth-globe" },
+  { key: "travel", href: "/tools/station-alarm" },
   { key: "game", href: "/games" },
 ] as const;
 
@@ -104,7 +106,7 @@ export default function HomePage() {
             Pick a path
           </h2>
           <p className="mb-5 text-sm font-semibold text-[var(--muted)]">
-            Nine categories, every one of them free.
+            Eleven categories, every one of them free.
           </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {CATEGORY_LINKS.map(({ key, href }) => {

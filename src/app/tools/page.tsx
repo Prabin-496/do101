@@ -26,6 +26,8 @@ const HUBS: Array<{ category: ToolCategory; href: string }> = [
   { category: "seo", href: "/tools/seo" },
   { category: "qr", href: "/tools/qr-generator" },
   { category: "datetime", href: "/tools/datetime" },
+  { category: "learn", href: "/tools/earth-globe" },
+  { category: "travel", href: "/tools/station-alarm" },
   { category: "calculator", href: "/calculators" },
   { category: "game", href: "/games" },
 ];

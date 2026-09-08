@@ -15,6 +15,8 @@ const HUBS: Array<{ category: ToolCategory; href: string }> = [
   { category: "seo", href: "/tools/seo" },
   { category: "calculator", href: "/calculators" },
   { category: "datetime", href: "/tools/datetime" },
+  { category: "learn", href: "/tools/earth-globe" },
+  { category: "travel", href: "/tools/station-alarm" },
   { category: "game", href: "/games" },
 ];
 
@@ -25,6 +27,7 @@ const SHORTCUTS = [
   { href: "/tools/heic-to-jpg", label: "HEIC to JPG" },
   { href: "/tools/json-formatter", label: "Format JSON" },
   { href: "/tools/digital-clock", label: "Full-screen clock" },
+  { href: "/tools/earth-globe", label: "3D Earth globe" },
 ];
 
 /**

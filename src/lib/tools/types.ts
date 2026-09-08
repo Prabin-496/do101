@@ -8,6 +8,8 @@ export type ToolCategory =
   | "qr"
   | "generator"
   | "datetime"
+  | "learn"
+  | "travel"
   | "calculator"
   | "productivity"
   | "game";
@@ -122,6 +124,20 @@ export const CATEGORY_META: Record<
     icon: "🕒",
     blurb: "Differences, timers, time zones and timestamps.",
     accent: "sky",
+  },
+  learn: {
+    label: "Learn",
+    slug: "learn",
+    icon: "🌍",
+    blurb: "Interactive things worth exploring — starting with the world itself.",
+    accent: "sky",
+  },
+  travel: {
+    label: "Travel",
+    slug: "travel",
+    icon: "🚉",
+    blurb: "Getting there, and being woken when you arrive.",
+    accent: "fire",
   },
   calculator: {
     label: "Calculators",
