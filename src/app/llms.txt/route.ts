@@ -60,7 +60,7 @@ export function GET() {
     "- PDF compression offers a safe mode that keeps text selectable with modest savings, and an aggressive mode that rasterises pages and destroys the text layer. Both are labelled.",
   );
   lines.push(
-    "- Password-protected PDFs cannot be opened, and PDF encryption and unlocking are not offered.",
+    "- PDF protection uses real AES encryption applied in the browser. Unlocking removes restrictions from a document that already opens, and removes a password when the user supplies it — a wrong password is rejected, so it is not a password cracker.",
   );
   lines.push(
     "- PDF to Excel recovers tables from the text layer by clustering word positions, and reports a confidence score. Merged cells and multi-line cells are where it struggles.",
@@ -72,7 +72,13 @@ export function GET() {
     "- Signing places a visual signature, not a cryptographic one. It creates no certificate or audit trail.",
   );
   lines.push(
-    "- PowerPoint conversion and PDF/A archiving are not offered — they need server-side layout analysis.",
+    "- PDF to PowerPoint produces a real .pptx with one page per slide as a picture, not editable text boxes.",
+  );
+  lines.push(
+    "- PDF/A archiving and PowerPoint-to-PDF are not offered; PDF/A needs font embedding and conforming metadata that a browser cannot guarantee.",
+  );
+  lines.push(
+    "- Repairing a PDF recovers the pages that are still readable and reports how many survived. It cannot restore data that was already lost.",
   );
   lines.push(
     "- OCR downloads a language model (~12–15 MB) from a public CDN on first use; recognition itself is local.",

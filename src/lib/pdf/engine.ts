@@ -434,8 +434,11 @@ export async function repairPdf(bytes: ArrayBuffer): Promise<RepairReport> {
   const { PDFDocument } = await lib();
 
   try {
+    // ignoreEncryption would skip the check without decrypting the content
+    // streams, producing a file whose text is unreadable. Loading with the
+    // empty user password decrypts restriction-only documents properly, and
+    // genuinely password-locked ones fail here and are reported as such.
     const source = await PDFDocument.load(bytes, {
-      ignoreEncryption: true,
       throwOnInvalidObject: false,
       updateMetadata: false,
     });
@@ -459,10 +462,15 @@ export async function repairPdf(bytes: ArrayBuffer): Promise<RepairReport> {
           : `Recovered ${out.getPageCount()} of ${indices.length} pages. The rest could not be read.`,
     };
   } catch (error) {
+    if (error instanceof PdfError) throw error;
+    const message = error instanceof Error ? error.message : "";
+    if (/encrypt|password/i.test(message)) {
+      throw new PdfError(
+        "This PDF is password-protected. Remove the password with the Unlock tool first, then try repairing it.",
+      );
+    }
     throw new PdfError(
-      error instanceof PdfError
-        ? error.message
-        : "This file is too damaged to recover in a browser. The header or cross-reference table may be missing entirely.",
+      "This file is too damaged to recover in a browser. The header or cross-reference table may be missing entirely.",
     );
   }
 }
