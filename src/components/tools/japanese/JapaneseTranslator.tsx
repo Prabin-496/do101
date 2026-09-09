@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/Button";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { Toggle } from "@/components/ui/Field";
 import { InfoNote } from "@/components/ui/Feedback";
-import { annotate, type Token } from "@/lib/japanese/annotate";
-import { hasJapanese, isKanji, typingSteps, typingString } from "@/lib/japanese/kana";
-import { KANJI_MAP, type KanjiEntry } from "@/lib/japanese/dictionary";
 import {
-  TranslationError, cached, describeMatch, translate, worthTranslating,
-  type Direction, type TranslationResult,
+  SOURCE_NOTES, analyse, type Analysis, type Token,
+} from "@/lib/japanese/annotate";
+import { hasJapanese, typingString } from "@/lib/japanese/kana";
+import type { KanjiEntry } from "@/lib/japanese/dictionary";
+import {
+  TranslationError, cached, describeMatch, translateEachLine,
+  type Direction, type LineTranslation,
 } from "@/lib/japanese/translate";
 import { useIsHydrated } from "@/lib/utils/use-local";
 import { track } from "@/lib/analytics";
@@ -22,33 +24,29 @@ const DEBOUNCE_MS = 700;
 
 const SOURCE_UNDERLINE: Record<Token["source"], string> = {
   word: "border-[var(--grass)]",
-  kana: "border-[var(--sky)]",
+  inflected: "border-[var(--grass)]",
+  compound: "border-dashed border-[var(--fire)]",
   kanji: "border-dashed border-[var(--fire)]",
-  unknown: "border-dashed border-[var(--cherry)]",
+  kana: "border-[var(--sky)]",
+  particle: "border-[var(--grape)]",
+  unresolved: "border-dashed border-[var(--cherry)]",
   other: "border-transparent",
 };
 
-const SOURCE_NOTE: Record<Token["source"], string> = {
-  word: "Known word — this reading is reliable.",
-  kana: "Kana reads exactly as written.",
-  kanji: "Single kanji read on its own. Inside a compound it is often read differently.",
-  unknown: "Not in the bundled vocabulary, so no reading is shown rather than a guess.",
-  other: "",
-};
-
-/** How you would actually type this token on a Japanese IME. */
-function typingHint(token: Token): { keys: string; convert: boolean } {
-  const hasKanji = [...token.surface].some(isKanji);
-  const source = hasKanji ? token.reading : token.surface;
-  return { keys: source ? typingString(source) : "", convert: hasKanji };
+/** One line of input, its translation, and the analysis of the Japanese half. */
+interface Segment {
+  source: string;
+  translated: string;
+  japanese: string;
+  analysis: Analysis;
+  match: number;
 }
 
 /**
- * One word, stacked: reading on top, the word itself, then romaji and meaning.
- *
- * Reading the four rows downwards is the whole point — someone who cannot read
- * kanji can still follow the sentence, and picks up the reading by seeing it
- * sitting directly above the character every time.
+ * One word, stacked: reading on top, the word, then how to say it and what it
+ * means. Reading the four rows downwards is the point — someone who cannot read
+ * kanji can still follow the sentence, and picks the reading up by seeing it
+ * sitting above the character every time.
  */
 function TokenColumn({
   token,
@@ -62,7 +60,7 @@ function TokenColumn({
   if (token.source === "other") {
     return (
       <span className="self-end pb-6 text-xl font-extrabold text-[var(--muted)]" aria-hidden>
-        {token.surface.trim() ? token.surface : " "}
+        {token.surface.trim() ? token.surface : " "}
       </span>
     );
   }
@@ -74,17 +72,20 @@ function TokenColumn({
       type="button"
       onClick={onSelect}
       aria-pressed={active}
-      title={SOURCE_NOTE[token.source]}
+      title={SOURCE_NOTES[token.source]}
       className={cn(
         "flex min-w-0 flex-col items-center rounded-xl px-1.5 py-1 transition",
         active ? "bg-[var(--sun-soft)]" : "hover:bg-[var(--panel)]",
       )}
     >
       <span className="h-4 text-[11px] font-bold leading-none text-[var(--muted)]" lang="ja">
-        {showReading ? token.reading : " "}
+        {showReading ? token.reading : " "}
       </span>
       <span
-        className={cn("mt-1 border-b-2 pb-0.5 text-2xl font-extrabold leading-tight", SOURCE_UNDERLINE[token.source])}
+        className={cn(
+          "mt-1 border-b-2 pb-0.5 text-2xl font-extrabold leading-tight",
+          SOURCE_UNDERLINE[token.source],
+        )}
         lang="ja"
       >
         {token.surface}
@@ -93,7 +94,7 @@ function TokenColumn({
         {token.romaji || "?"}
       </span>
       <span className="mt-1 max-w-[9rem] truncate text-[10px] font-semibold leading-none text-[var(--muted)]">
-        {token.meaning ?? " "}
+        {token.meaning ?? " "}
       </span>
     </button>
   );
@@ -144,14 +145,11 @@ export function JapaneseTranslator() {
   const [direction, setDirection] = React.useState<Direction>("en-ja");
   const [input, setInput] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
-  // The result is stored with the request that produced it, so "is a
-  // translation outstanding?" is derived rather than tracked as its own flag
-  // that could drift out of step with the request.
-  const [payload, setPayload] = React.useState<{ key: string; result: TranslationResult } | null>(null);
+  const [payload, setPayload] = React.useState<{ key: string; lines: LineTranslation[] } | null>(null);
   const [error, setError] = React.useState<{ key: string; message: string; retryable: boolean } | null>(null);
   const [live, setLive] = React.useState(true);
   const [manualNonce, setManualNonce] = React.useState(0);
-  const [selected, setSelected] = React.useState<number | null>(null);
+  const [selected, setSelected] = React.useState<string | null>(null);
   const [speaking, setSpeaking] = React.useState(false);
 
   const hydrated = useIsHydrated();
@@ -164,9 +162,8 @@ export function JapaneseTranslator() {
     return () => window.clearTimeout(timer);
   }, [input]);
 
-  const requestText = debounced.trim();
-  const requestKey =
-    requestText && worthTranslating(requestText, direction) ? `${direction}|${requestText}` : "";
+  const requestText = debounced.replace(/\s+$/, "");
+  const requestKey = requestText.trim() ? `${direction}|${requestText}` : "";
 
   React.useEffect(() => {
     if (!requestKey) return;
@@ -175,10 +172,10 @@ export function JapaneseTranslator() {
     const controller = new AbortController();
     let cancelled = false;
 
-    translate(requestText, direction, controller.signal)
-      .then((translated) => {
+    translateEachLine(requestText, direction, controller.signal)
+      .then((lines) => {
         if (cancelled) return;
-        setPayload({ key: requestKey, result: translated });
+        setPayload({ key: requestKey, lines });
         setError(null);
         if (!reported.current) {
           reported.current = true;
@@ -190,11 +187,7 @@ export function JapaneseTranslator() {
         setError(
           caught instanceof TranslationError
             ? { key: requestKey, message: caught.message, retryable: caught.retryable }
-            : {
-                key: requestKey,
-                message: "Could not reach the translation service.",
-                retryable: true,
-              },
+            : { key: requestKey, message: "Could not reach the translation service.", retryable: true },
         );
       });
 
@@ -204,44 +197,79 @@ export function JapaneseTranslator() {
     };
   }, [requestKey, requestText, direction, live, manualNonce]);
 
-  // The previous translation stays on screen, dimmed, while the next one is
-  // fetched. Blanking the box on every keystroke makes live translation feel
-  // broken even when it is working.
-  const result = payload?.result ?? null;
   const fresh = payload?.key === requestKey;
   const activeError = error?.key === requestKey ? error : null;
   const busy =
-    requestKey !== "" && !fresh && !activeError && (live || manualNonce > 0) && !cached(requestText, direction);
+    requestKey !== "" &&
+    !fresh &&
+    !activeError &&
+    (live || manualNonce > 0) &&
+    !cached(requestText.split("\n")[0]?.trim() ?? "", direction);
 
-  // The Japanese half of the pair, wherever it currently sits.
-  const japanese = direction === "en-ja" ? result?.text ?? "" : input;
-  const reading = React.useMemo(() => (japanese ? annotate(japanese) : null), [japanese]);
-
-  const kanji = React.useMemo(() => {
-    const seen = new Set<string>();
-    const found: KanjiEntry[] = [];
-    for (const char of japanese) {
-      if (!isKanji(char) || seen.has(char)) continue;
-      seen.add(char);
-      const entry = KANJI_MAP.get(char);
-      if (entry) found.push(entry);
+  /**
+   * One segment per line. The analysis always runs on the Japanese half,
+   * whichever box that currently is, and it runs locally — so the readings,
+   * romaji and typing guide are there even when the translation is not.
+   */
+  const segments = React.useMemo<Segment[]>(() => {
+    if (direction === "ja-en") {
+      // The Japanese is what the reader typed, so analyse it live regardless of
+      // whether a translation has come back yet.
+      return input.split("\n").map((line, index) => {
+        const translated = payload?.lines[index];
+        return {
+          source: line,
+          translated: translated?.result?.text ?? "",
+          japanese: line,
+          analysis: analyse(line),
+          match: translated?.result?.match ?? 0,
+        };
+      });
     }
-    return found;
-  }, [japanese]);
 
-  const keystrokes = React.useMemo(
-    () => (reading?.hiragana ? typingString(reading.hiragana) : ""),
-    [reading],
-  );
+    return (payload?.lines ?? []).map((line) => ({
+      source: line.source,
+      translated: line.result?.text ?? "",
+      japanese: line.result?.text ?? "",
+      analysis: analyse(line.result?.text ?? ""),
+      match: line.result?.match ?? 0,
+    }));
+  }, [direction, input, payload]);
 
-  const selectedToken = selected !== null ? reading?.tokens[selected] ?? null : null;
+  const filled = segments.filter((s) => s.japanese.trim());
+  const allKanji = React.useMemo(() => {
+    const seen = new Set<string>();
+    const out: KanjiEntry[] = [];
+    for (const segment of filled) {
+      for (const entry of segment.analysis.kanji) {
+        if (seen.has(entry.kanji)) continue;
+        seen.add(entry.kanji);
+        out.push(entry);
+      }
+    }
+    return out;
+  }, [filled]);
+
+  const wholeJapanese = filled.map((s) => s.japanese).join("\n");
+  const wholeRomaji = filled.map((s) => s.analysis.romaji).join("\n");
+  const wholeHiragana = filled.map((s) => s.analysis.hiragana).join("\n");
+  const wholeKatakana = filled.map((s) => s.analysis.katakana).join("\n");
+  const wholeTyping = filled.map((s) => s.analysis.typing).join("\n");
+  const unresolved = [...new Set(filled.flatMap((s) => s.analysis.unresolved))];
+  const approximate = filled.some((s) => s.analysis.tokens.some((t) => t.confidence === "approximate"));
+
+  const selectedToken = React.useMemo(() => {
+    if (!selected) return null;
+    const [line, position] = selected.split(":").map(Number);
+    return segments[line]?.analysis.tokens[position] ?? null;
+  }, [selected, segments]);
 
   const canSpeak = hydrated && typeof window !== "undefined" && "speechSynthesis" in window;
 
   function speak() {
-    if (!canSpeak || !japanese) return;
+    if (!canSpeak || !wholeJapanese) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(japanese);
+    const utterance = new SpeechSynthesisUtterance(wholeJapanese);
     utterance.lang = "ja-JP";
     utterance.rate = 0.85;
     utterance.onend = () => setSpeaking(false);
@@ -252,7 +280,7 @@ export function JapaneseTranslator() {
 
   function swap() {
     const next: Direction = direction === "en-ja" ? "ja-en" : "en-ja";
-    const carried = result?.text ?? "";
+    const carried = payload?.lines.map((l) => l.result?.text ?? "").join("\n").trim() ?? "";
     setDirection(next);
     setSelected(null);
     setError(null);
@@ -278,13 +306,10 @@ export function JapaneseTranslator() {
     input.trim().length > 2 &&
     ((direction === "ja-en" && !inputIsJapanese) || (direction === "en-ja" && inputIsJapanese));
 
-  const confidence = result ? describeMatch(result.match) : null;
-  const pending = input.trim() !== debounced.trim() && input.trim().length > 0;
-  const outputText = result?.text ?? "";
+  const lineCount = input.split("\n").filter((l) => l.trim()).length;
 
   return (
     <div className="space-y-4">
-      {/* Direction */}
       <div className="flex items-center justify-center gap-2">
         <span className="rounded-2xl border-2 border-[var(--border)] px-4 py-2 text-sm font-extrabold">
           {direction === "en-ja" ? "English" : "日本語"}
@@ -297,7 +322,6 @@ export function JapaneseTranslator() {
         </span>
       </div>
 
-      {/* The two boxes, each with its romaji directly underneath. */}
       <div className="grid gap-3 lg:grid-cols-2">
         <Card className="flex flex-col p-0">
           <label htmlFor="jt-in" className="sr-only">Text to translate</label>
@@ -309,20 +333,19 @@ export function JapaneseTranslator() {
             lang={direction === "en-ja" ? "en" : "ja"}
             placeholder={
               direction === "en-ja"
-                ? "Start typing in English — the Japanese appears as you type."
+                ? "Start typing in English — the Japanese appears as you type.\nShift+Enter starts a new line, translated on its own."
                 : "日本語を入力してください。"
             }
             className="do-scroll min-h-[150px] w-full resize-y bg-transparent p-4 text-xl font-extrabold leading-relaxed outline-none placeholder:text-base placeholder:font-semibold placeholder:text-[var(--muted)]"
           />
-          {/* Romaji under the Japanese box, exactly where you would look for it. */}
-          {direction === "ja-en" && reading?.romaji ? (
-            <p className="border-t-2 border-[var(--border)] px-4 py-2.5 text-sm font-bold lowercase text-[var(--muted)]">
-              {reading.romaji}
+          {direction === "ja-en" && wholeRomaji ? (
+            <p className="whitespace-pre-wrap border-t-2 border-[var(--border)] px-4 py-2.5 text-sm font-bold lowercase text-[var(--muted)]">
+              {wholeRomaji}
             </p>
           ) : null}
           <div className="flex flex-wrap items-center gap-2 border-t-2 border-[var(--border)] px-3 py-2">
             <span className="text-xs font-bold text-[var(--muted)]">
-              {input.trim() ? `${input.trim().length} characters` : " "}
+              {lineCount > 1 ? `${lineCount} lines, each translated on its own` : " "}
             </span>
             <span className="flex-1" />
             {input ? (
@@ -332,17 +355,24 @@ export function JapaneseTranslator() {
         </Card>
 
         <Card className="flex flex-col bg-[var(--panel)] p-0">
-          <div className="min-h-[150px] flex-1 p-4">
-            {outputText ? (
-              <p
-                className={cn(
-                  "text-xl font-extrabold leading-relaxed transition-opacity",
-                  fresh ? "opacity-100" : "opacity-45",
-                )}
-                lang={direction === "en-ja" ? "ja" : "en"}
-              >
-                {outputText}
-              </p>
+          <div className="min-h-[150px] flex-1 space-y-3 p-4">
+            {filled.length > 0 ? (
+              filled.map((segment, index) => (
+                <div key={index} className={cn("transition-opacity", fresh ? "opacity-100" : "opacity-45")}>
+                  <p
+                    className="text-xl font-extrabold leading-relaxed"
+                    lang={direction === "en-ja" ? "ja" : "en"}
+                  >
+                    {segment.translated || (direction === "ja-en" ? "…" : "")}
+                  </p>
+                  {/* Romaji directly beneath its own line, as Google Translate shows it. */}
+                  {direction === "en-ja" && segment.analysis.romaji ? (
+                    <p className="mt-1 text-sm font-bold lowercase text-[var(--muted)]">
+                      {segment.analysis.romaji}
+                    </p>
+                  ) : null}
+                </div>
+              ))
             ) : (
               <p className="text-base font-semibold text-[var(--muted)]">
                 {busy ? "Translating…" : "The translation appears here as you type."}
@@ -350,36 +380,41 @@ export function JapaneseTranslator() {
             )}
           </div>
 
-          {/* Romaji under the Japanese output, the way Google Translate shows it. */}
-          {direction === "en-ja" && reading?.romaji ? (
-            <p className="border-t-2 border-[var(--border)] px-4 py-2.5 text-sm font-bold lowercase text-[var(--muted)]">
-              {reading.romaji}
-            </p>
-          ) : null}
-
           <div className="flex flex-wrap items-center gap-2 border-t-2 border-[var(--border)] px-3 py-2">
-            {busy || pending ? (
+            {busy ? (
               <span className="flex items-center gap-1.5 text-xs font-extrabold text-[var(--muted)]">
                 <span className="size-2 animate-pulse rounded-full bg-[var(--sky)]" aria-hidden />
-                {busy ? "Translating" : "…"}
+                Translating
               </span>
-            ) : confidence && outputText && fresh ? (
-              <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-extrabold", `bg-[var(--${confidence.tone}-soft)]`)}>
-                {confidence.label}
-              </span>
+            ) : fresh && filled.length > 0 ? (
+              (() => {
+                const worst = Math.min(...filled.map((s) => s.match));
+                const confidence = describeMatch(worst);
+                return (
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[11px] font-extrabold",
+                      `bg-[var(--${confidence.tone}-soft)]`,
+                    )}
+                  >
+                    {confidence.label}
+                  </span>
+                );
+              })()
             ) : null}
             <span className="flex-1" />
-            {canSpeak && japanese ? (
+            {canSpeak && wholeJapanese ? (
               <Button size="sm" tone="sky" onClick={speak} disabled={speaking}>
                 {speaking ? "🔊…" : "🔊 Hear it"}
               </Button>
             ) : null}
-            {outputText ? <CopyButton value={outputText} label="Copy" /> : null}
+            {filled.length > 0 ? (
+              <CopyButton value={filled.map((s) => s.translated).join("\n")} label="Copy" />
+            ) : null}
           </div>
         </Card>
       </div>
 
-      {/* Live status and controls */}
       <div className="flex flex-wrap items-center gap-2">
         <Toggle
           checked={live}
@@ -388,7 +423,7 @@ export function JapaneseTranslator() {
             if (value) setManualNonce(0);
           }}
           label="Translate as I type"
-          description="Turn this off to translate only when you press the button — useful on a slow connection."
+          description="Off translates only when you press the button. Each line is always translated on its own, never together."
         />
         {!live ? (
           <Button
@@ -430,11 +465,13 @@ export function JapaneseTranslator() {
               Try again
             </button>
           ) : null}
+          <span className="w-full text-xs font-semibold">
+            The readings, romaji and typing guide below still work — they run on your device.
+          </span>
         </p>
       ) : null}
 
-      {/* Word by word */}
-      {reading && reading.tokens.length > 0 ? (
+      {filled.length > 0 ? (
         <Card className="p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="text-sm font-extrabold">Word by word</p>
@@ -443,16 +480,23 @@ export function JapaneseTranslator() {
             </p>
           </div>
 
-          <div className="do-scroll mt-3 flex flex-wrap items-end gap-1 overflow-x-auto pb-1">
-            {reading.tokens.map((token, index) => (
-              <TokenColumn
-                key={index}
-                token={token}
-                active={selected === index}
-                onSelect={() => setSelected(selected === index ? null : index)}
-              />
-            ))}
-          </div>
+          {filled.map((segment, lineIndex) => (
+            <div key={lineIndex} className={cn(lineIndex > 0 && "mt-4 border-t-2 border-[var(--border)] pt-4")}>
+              <div className="do-scroll flex flex-wrap items-end gap-1 overflow-x-auto pb-1">
+                {segment.analysis.tokens.map((token, position) => (
+                  <TokenColumn
+                    key={position}
+                    token={token}
+                    active={selected === `${segments.indexOf(segment)}:${position}`}
+                    onSelect={() => {
+                      const id = `${segments.indexOf(segment)}:${position}`;
+                      setSelected(selected === id ? null : id);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
 
           {selectedToken ? (
             <div className="mt-3 rounded-2xl border-2 border-[var(--sun)] bg-[var(--sun-soft)] p-4">
@@ -465,32 +509,28 @@ export function JapaneseTranslator() {
                 ) : null}
               </p>
               <p className="mt-0.5 text-sm font-bold lowercase text-[var(--sky-dark)] dark:text-[var(--sky)]">
-                {selectedToken.romaji || "reading unknown"}
+                {selectedToken.romaji}
               </p>
               {selectedToken.meaning ? (
                 <p className="mt-1 text-sm font-semibold">{selectedToken.meaning}</p>
               ) : null}
               <p className="mt-2 text-xs font-semibold text-[var(--muted)]">
-                {SOURCE_NOTE[selectedToken.source]}
+                {SOURCE_NOTES[selectedToken.source]}
               </p>
 
-              {(() => {
-                const hint = typingHint(selectedToken);
-                if (!hint.keys) return null;
-                return (
-                  <p className="mt-3 text-sm font-bold">
-                    <span className="text-[var(--muted)]">Type </span>
-                    <span className="rounded-lg border-2 border-[var(--border-strong)] bg-[var(--bg)] px-2 py-1 font-mono lowercase">
-                      {hint.keys}
-                    </span>
-                    {hint.convert ? (
-                      <span className="text-[var(--muted)]"> then press space to convert it</span>
-                    ) : null}
-                  </p>
-                );
-              })()}
+              {selectedToken.typing ? (
+                <p className="mt-3 text-sm font-bold">
+                  <span className="text-[var(--muted)]">Type </span>
+                  <span className="rounded-lg border-2 border-[var(--border-strong)] bg-[var(--bg)] px-2 py-1 font-mono lowercase">
+                    {selectedToken.typing}
+                  </span>
+                  {selectedToken.needsConversion ? (
+                    <span className="text-[var(--muted)]"> then press space to convert it</span>
+                  ) : null}
+                </p>
+              ) : null}
 
-              {selectedToken.kanji && selectedToken.kanji.length > 0 ? (
+              {selectedToken.kanji.length > 0 ? (
                 <ul className="mt-3 space-y-2">
                   {selectedToken.kanji.map((entry) => (
                     <KanjiCard key={entry.kanji} entry={entry} />
@@ -512,29 +552,34 @@ export function JapaneseTranslator() {
               <span className="inline-block h-0.5 w-4 bg-[var(--sky)]" /> kana, exact
             </li>
             <li className="flex items-center gap-1.5">
-              <span className="inline-block h-0.5 w-4 bg-[var(--fire)]" /> single kanji, approximate
+              <span className="inline-block h-0.5 w-4 bg-[var(--grape)]" /> particle
             </li>
             <li className="flex items-center gap-1.5">
-              <span className="inline-block h-0.5 w-4 bg-[var(--cherry)]" /> not in the vocabulary
+              <span className="inline-block h-0.5 w-4 bg-[var(--fire)]" /> read from the kanji, approximate
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span className="inline-block h-0.5 w-4 bg-[var(--cherry)]" /> no reading found
             </li>
           </ul>
         </Card>
       ) : null}
 
-      {/* Scripts */}
-      {reading && japanese ? (
+      {wholeJapanese ? (
         <div className="grid gap-3 sm:grid-cols-3">
           {([
-            ["Hiragana", reading.hiragana, "grass", "ja"],
-            ["Katakana", reading.katakana, "sky", "ja"],
-            ["Romaji", reading.romaji, "grape", "en"],
+            ["Hiragana", wholeHiragana, "grass", "ja"],
+            ["Katakana", wholeKatakana, "sky", "ja"],
+            ["Romaji", wholeRomaji, "grape", "en"],
           ] as const).map(([label, value, tone, lang]) => (
             <Card key={label} className={cn("p-4", `bg-[var(--${tone}-soft)]`)}>
               <p className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)]">
                 {label}
               </p>
               <p
-                className={cn("mt-1 break-words text-lg font-extrabold", label === "Romaji" && "lowercase")}
+                className={cn(
+                  "mt-1 whitespace-pre-wrap break-words text-lg font-extrabold",
+                  label === "Romaji" && "lowercase",
+                )}
                 lang={lang}
               >
                 {value || "—"}
@@ -547,48 +592,33 @@ export function JapaneseTranslator() {
         </div>
       ) : null}
 
-      {/* Kanji in the sentence */}
-      {kanji.length > 0 ? (
+      {allKanji.length > 0 ? (
         <Card className="p-4">
           <p className="text-sm font-extrabold">
-            Kanji in this sentence <span className="text-[var(--muted)]">({kanji.length})</span>
+            Kanji in this text <span className="text-[var(--muted)]">({allKanji.length})</span>
           </p>
           <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
-            On readings come from Chinese and appear in compound words; kun readings are the
-            native Japanese ones, used when the kanji stands alone.
+            On readings came from Chinese and are used in compound words; kun readings are the
+            native Japanese ones, used when the kanji stands alone. That is why 新入社員 is read
+            shin-nyuu-sha-in rather than with the kun readings of its four characters.
           </p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-            {kanji.map((entry) => (
+            {allKanji.map((entry) => (
               <KanjiCard key={entry.kanji} entry={entry} />
             ))}
           </ul>
         </Card>
       ) : null}
 
-      {/* Typing the whole thing */}
-      {keystrokes ? (
+      {wholeTyping ? (
         <Card className="p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-sm font-extrabold">How to type the whole sentence</p>
-            <CopyButton value={keystrokes} label="Copy keystrokes" />
+            <p className="text-sm font-extrabold">How to type it</p>
+            <CopyButton value={wholeTyping} label="Copy keystrokes" />
           </div>
-          <p className="mt-2 break-words rounded-2xl bg-[var(--panel)] px-4 py-3 font-mono text-base font-bold lowercase">
-            {keystrokes}
+          <p className="mt-2 whitespace-pre-wrap break-words rounded-2xl bg-[var(--panel)] px-4 py-3 font-mono text-base font-bold lowercase">
+            {wholeTyping}
           </p>
-          <ul className="do-scroll mt-3 flex gap-1.5 overflow-x-auto pb-1">
-            {typingSteps(reading!.hiragana).slice(0, 60).map((step, index) => (
-              <li
-                key={index}
-                className="shrink-0 rounded-xl border-2 border-[var(--border)] px-2.5 py-1.5 text-center"
-                title={step.note}
-              >
-                <span className="block text-base font-extrabold" lang="ja">{step.kana}</span>
-                <span className="block font-mono text-[11px] font-bold lowercase text-[var(--sky-dark)] dark:text-[var(--sky)]">
-                  {step.keys || "␣"}
-                </span>
-              </li>
-            ))}
-          </ul>
           <p className="mt-3 text-sm font-semibold text-[var(--muted)]">
             Switch to the Japanese IME first — Control+Space on macOS, Windows+Space on Windows —
             then type these letters. Where the sentence has kanji, type the reading and press
@@ -597,21 +627,29 @@ export function JapaneseTranslator() {
         </Card>
       ) : null}
 
-      {reading && (reading.unknown.length > 0 || reading.tokens.some((t) => t.source === "kanji")) ? (
+      {unresolved.length > 0 ? (
+        <p className="rounded-2xl border-2 border-[var(--cherry)] bg-[var(--cherry-soft)] px-4 py-3 text-sm font-semibold">
+          <strong className="font-extrabold">No reading found for </strong>
+          <span lang="ja" className="text-lg font-black">{unresolved.join("、")}</span>. These are
+          shown as ? in the romaji rather than left as kanji, so the pronunciation line never
+          contains characters you came here unable to read.
+        </p>
+      ) : approximate ? (
         <p className="rounded-2xl bg-[var(--sun-soft)] px-4 py-3 text-sm font-semibold">
-          Some readings above are approximate. A kanji read on its own often takes a different
-          reading inside a compound word, and the bundled vocabulary covers common words rather
-          than the whole language. Anything underlined in red was left unread rather than guessed.
+          Some readings above are marked approximate. Those are compounds not in the bundled
+          vocabulary, read from the on&rsquo;yomi of each kanji — usually right, but compounds
+          sometimes shift sound, as 学校 does in becoming gakkou rather than gakukou.
         </p>
       ) : null}
 
       <InfoNote icon="🌐">
         <strong className="font-extrabold">Translation is the one part that leaves your browser.</strong>{" "}
-        A translation model is far too large to run in a page, so the text you type is sent to
-        MyMemory, a free public service, once you pause typing. Results are reused when you retype
-        the same phrase, so live translation stays within the free quota — but your text does reach
-        them, so do not paste anything confidential. The readings, romaji, kanji breakdown and
-        typing guide all run on your device and keep working if that service is unavailable.
+        A translation model is far too large to run in a page, so each line is sent to MyMemory, a
+        free public service, once you pause typing — one line at a time, never joined together.
+        Results are reused when you retype the same phrase, so live translation stays within the
+        free quota. Your text does reach them, so do not paste anything confidential. The readings,
+        romaji, kanji breakdown and typing guide all run on your device and keep working if that
+        service is unavailable.
       </InfoNote>
     </div>
   );

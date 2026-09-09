@@ -221,3 +221,37 @@ export function describeMatch(match: number): { label: string; tone: "grass" | "
   if (match >= 0.6) return { label: "Partial match — read it critically", tone: "sun" };
   return { label: "Machine translation only — check it before relying on it", tone: "fire" };
 }
+
+export interface LineTranslation {
+  /** The original line. */
+  source: string;
+  /** Null for a blank line, or when this line alone could not be translated. */
+  result: TranslationResult | null;
+}
+
+/**
+ * Translates each line on its own.
+ *
+ * Lines are deliberately independent: nothing from one is sent with another, so
+ * a second thought on line two cannot bend the translation of line one. That is
+ * also why a blank line costs nothing — it is never sent.
+ *
+ * Sequential rather than parallel, because the free tier rate-limits bursts and
+ * a half-translated block is worse than a slightly slower one.
+ */
+export async function translateEachLine(
+  text: string,
+  direction: Direction,
+  signal?: AbortSignal,
+): Promise<LineTranslation[]> {
+  const out: LineTranslation[] = [];
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!worthTranslating(trimmed, direction)) {
+      out.push({ source: line, result: null });
+      continue;
+    }
+    out.push({ source: line, result: await translate(trimmed, direction, signal) });
+  }
+  return out;
+}

@@ -3,7 +3,7 @@ import {
   hasJapanese, isKana, isKanji, kanaToRomaji, romajiToKana,
   toHiragana, toKatakana, typingSteps, typingString,
 } from "../src/lib/japanese/kana";
-import { annotate, kanjiIn } from "../src/lib/japanese/annotate";
+import { analyse, analyseLines, kanjiIn } from "../src/lib/japanese/annotate";
 import { KANJI, WORDS } from "../src/lib/japanese/dictionary";
 import { splitForTranslation, worthTranslating } from "../src/lib/japanese/translate";
 
@@ -140,45 +140,45 @@ describe("typing guide", () => {
 describe("reading annotation", () => {
   it("prefers the longest dictionary match", () => {
     // 日本人 must not be read as 日 + 本 + 人.
-    const result = annotate("日本人");
+    const result = analyse("日本人");
     expect(result.tokens).toHaveLength(1);
     expect(result.tokens[0].reading).toBe("にほんじん");
     expect(result.romaji).toBe("nihonjin");
   });
 
   it("reads kana exactly and marks it as exact", () => {
-    const result = annotate("ありがとう");
+    const result = analyse("ありがとう");
     expect(result.tokens[0].source).toBe("kana");
     expect(result.hiragana).toBe("ありがとう");
   });
 
   it("marks a lone kanji reading as approximate rather than certain", () => {
-    const result = annotate("鉛");
+    const result = analyse("鉛");
     const token = result.tokens[0];
     // Not in the bundled list, so nothing is invented.
-    expect(token.source).toBe("unknown");
+    expect(token.source).toBe("unresolved");
     expect(token.reading).toBe("");
-    expect(result.unknown).toContain("鉛");
+    expect(result.unresolved).toContain("鉛");
   });
 
   it("never claims to be complete when a reading was guessed", () => {
-    expect(annotate("ありがとう").complete).toBe(true);
+    expect(analyse("ありがとう").complete).toBe(true);
     // 山 is a dictionary word, so its reading is reliable.
-    expect(annotate("山").complete).toBe(true);
+    expect(analyse("山").complete).toBe(true);
     // 村 is only in the single-kanji list, so the reading is a standalone guess.
-    expect(annotate("村").complete).toBe(false);
-    expect(annotate("村").tokens[0].source).toBe("kanji");
+    expect(analyse("村").complete).toBe(false);
+    expect(analyse("村").tokens[0].source).toBe("kanji");
   });
 
   it("keeps punctuation and Latin text unchanged", () => {
-    const result = annotate("Hello、日本！");
+    const result = analyse("Hello、日本！");
     expect(result.hiragana).toContain("Hello");
     expect(result.hiragana).toContain("、");
     expect(result.hiragana).toContain("！");
   });
 
   it("produces all three scripts for a mixed sentence", () => {
-    const result = annotate("私は学生です");
+    const result = analyse("私は学生です");
     expect(result.hiragana).toBe("わたしはがくせいです");
     expect(result.katakana).toBe("ワタシハガクセイデス");
     // は is the topic particle here, so it is read "wa" rather than "ha".
@@ -187,15 +187,15 @@ describe("reading annotation", () => {
 
 it("reads the three irregular particles as they are pronounced", () => {
     // Written は/へ/を, pronounced wa/e/o when they act as particles.
-    expect(annotate("私は学生です").romaji).toContain("watashi wa");
-    expect(annotate("日本語を勉強します").romaji).toContain("nihongo o");
-    expect(annotate("東京へ行きます").romaji).toContain("toukyou e");
+    expect(analyse("私は学生です").romaji).toContain("watashi wa");
+    expect(analyse("日本語を勉強します").romaji).toContain("nihongo o");
+    expect(analyse("東京へ行きます").romaji).toContain("toukyou e");
   });
 
   it("does not mistake は inside a word for a particle", () => {
     // はな is a word, not a particle, so it stays "hana".
-    expect(annotate("はな").romaji).toBe("hana");
-    expect(annotate("はやい").romaji).toBe("hayai");
+    expect(analyse("はな").romaji).toBe("hana");
+    expect(analyse("はやい").romaji).toBe("hayai");
   });
 
   it("lists the kanji it recognises", () => {
@@ -299,14 +299,14 @@ describe("whole-sentence readings", () => {
   ];
 
   it.each(CASES)("reads %s", (japanese, kana, romaji) => {
-    const result = annotate(japanese);
+    const result = analyse(japanese);
     expect(result.hiragana).toBe(kana);
     expect(result.romaji).toBe(romaji);
   });
 
   it("leaves nothing unread in these sentences", () => {
     for (const [japanese] of CASES) {
-      expect(annotate(japanese).unknown, japanese).toEqual([]);
+      expect(analyse(japanese).unresolved, japanese).toEqual([]);
     }
   });
 
@@ -318,13 +318,13 @@ describe("whole-sentence readings", () => {
       ["書かない", "かかない"],
       ["書いています", "かいています"],
     ] as const) {
-      expect(annotate(text).hiragana, text).toBe(reading);
+      expect(analyse(text).hiragana, text).toBe(reading);
     }
   });
 
   it("does not let okurigana swallow a following particle", () => {
     // 見に行く is 見 + に + 行く, so the ending stops at the particle.
-    const tokens = annotate("見に行く").tokens;
+    const tokens = analyse("見に行く").tokens;
     expect(tokens.map((t) => t.surface)).toEqual(["見", "に", "行く"]);
   });
 });
@@ -336,5 +336,182 @@ describe("translation cache", () => {
     expect(worthTranslating("go", "en-ja")).toBe(true);
     // A single kanji is a whole word, so Japanese needs a lower bar.
     expect(worthTranslating("駅", "ja-en")).toBe(true);
+  });
+});
+
+/**
+ * The bug this suite exists for.
+ *
+ * 私はこの会社の新入社員です was read as "watashi wa kono kaisha no atara hai
+ * yashiro 員 desu": the parser fell through to per-character kun readings
+ * before ever trying 新入社員 as vocabulary, and 員 — which had no entry at all
+ * — leaked into the romaji as a raw kanji.
+ */
+describe("compound recognition", () => {
+  const HAS_KANJI = /[一-鿿]/;
+
+  it("reads 新入社員 as vocabulary rather than four separate kanji", () => {
+    const result = analyse("私はこの会社の新入社員です");
+    expect(result.romaji).toBe("watashi wa kono kaisha no shinnyuu shain desu");
+    expect(result.hiragana).toBe("わたしはこのかいしゃのしんにゅうしゃいんです");
+  });
+
+  it("never leaves 員 in the romaji", () => {
+    for (const text of ["新入社員", "会社員", "社員", "正社員", "私はこの会社の新入社員です"]) {
+      expect(analyse(text).romaji, text).not.toContain("員");
+    }
+  });
+
+  it("puts no kanji at all into the romaji, whatever the input", () => {
+    const corpus = [
+      "私はこの会社の新入社員です",
+      "彼女は大学で科学を教えています。",
+      "来週の月曜日に東京へ出張します。",
+      "この書類を課長に提出しました。",
+      "駅の近くに新しい喫茶店ができました。",
+      // Deliberately obscure, to exercise the unresolved path.
+      "檸檬と葡萄を買いました。",
+      "鬱蒼とした森を歩く。",
+    ];
+    for (const text of corpus) {
+      expect(HAS_KANJI.test(analyse(text).romaji), text).toBe(false);
+    }
+  });
+
+  it("marks a character it cannot read instead of passing it through", () => {
+    const result = analyse("檸檬");
+    expect(result.unresolved.length).toBeGreaterThan(0);
+    expect(HAS_KANJI.test(result.romaji)).toBe(false);
+    expect(result.romaji).toContain("?");
+    // The original is still available, just kept separately from the reading.
+    expect(result.tokens.map((t) => t.surface).join("")).toBe("檸檬");
+  });
+
+  it("reads 30 common compounds correctly", () => {
+    const COMPOUNDS: Array<[word: string, reading: string, romaji: string]> = [
+      ["新入社員", "しんにゅうしゃいん", "shinnyuu shain"],
+      ["会社", "かいしゃ", "kaisha"],
+      ["日本語", "にほんご", "nihongo"],
+      ["勉強", "べんきょう", "benkyou"],
+      ["今日", "きょう", "kyou"],
+      ["大学生", "だいがくせい", "daigakusei"],
+      ["社員", "しゃいん", "shain"],
+      ["会議室", "かいぎしつ", "kaigishitsu"],
+      ["電話番号", "でんわばんごう", "denwabangou"],
+      ["図書館", "としょかん", "toshokan"],
+      ["自転車", "じてんしゃ", "jitensha"],
+      ["新幹線", "しんかんせん", "shinkansen"],
+      ["飛行機", "ひこうき", "hikouki"],
+      ["郵便局", "ゆうびんきょく", "yuubinkyoku"],
+      ["高校生", "こうこうせい", "koukousei"],
+      ["留学生", "りゅうがくせい", "ryuugakusei"],
+      ["天気予報", "てんきよほう", "tenkiyohou"],
+      ["誕生日", "たんじょうび", "tanjoubi"],
+      ["月曜日", "げつようび", "getsuyoubi"],
+      ["日曜日", "にちようび", "nichiyoubi"],
+      ["喫茶店", "きっさてん", "kissaten"],
+      ["美術館", "びじゅつかん", "bijutsukan"],
+      ["冷蔵庫", "れいぞうこ", "reizouko"],
+      ["携帯電話", "けいたいでんわ", "keitaidenwa"],
+      ["履歴書", "りれきしょ", "rirekisho"],
+      ["打ち合わせ", "うちあわせ", "uchiawase"],
+      ["出張", "しゅっちょう", "shutchou"],
+      ["残業", "ざんぎょう", "zangyou"],
+      ["給料", "きゅうりょう", "kyuuryou"],
+      ["確認", "かくにん", "kakunin"],
+      ["説明", "せつめい", "setsumei"],
+      ["経済", "けいざい", "keizai"],
+      ["環境", "かんきょう", "kankyou"],
+      ["文化", "ぶんか", "bunka"],
+    ];
+
+    for (const [word, reading, romaji] of COMPOUNDS) {
+      const result = analyse(word);
+      expect(result.hiragana, `${word} reading`).toBe(reading);
+      expect(result.romaji, `${word} romaji`).toBe(romaji);
+    }
+  });
+
+  it("reads 12 conjugated forms correctly", () => {
+    const CONJUGATED: Array<[word: string, reading: string, romaji: string]> = [
+      ["行きました", "いきました", "ikimashita"],
+      ["食べました", "たべました", "tabemashita"],
+      ["見ています", "みています", "miteimasu"],
+      ["飲みませんでした", "のみませんでした", "nomimasendeshita"],
+      ["読んでいます", "よんでいます", "yondeimasu"],
+      ["書かない", "かかない", "kakanai"],
+      ["話しました", "はなしました", "hanashimashita"],
+      ["働いています", "はたらいています", "hataraiteimasu"],
+      ["始まります", "はじまります", "hajimarimasu"],
+      ["終わりました", "おわりました", "owarimashita"],
+      ["覚えています", "おぼえています", "oboeteimasu"],
+      ["忘れました", "わすれました", "wasuremashita"],
+    ];
+
+    for (const [word, reading, romaji] of CONJUGATED) {
+      const result = analyse(word);
+      expect(result.hiragana, `${word} reading`).toBe(reading);
+      expect(result.romaji, `${word} romaji`).toBe(romaji);
+    }
+  });
+
+  it("prefers vocabulary over a per-character reading at every position", () => {
+    // If the fallback ever ran first, these would come out as kun readings.
+    const result = analyse("会社");
+    expect(result.tokens).toHaveLength(1);
+    expect(result.tokens[0].source).toBe("word");
+  });
+
+  it("falls back to on'yomi inside a compound, not kun'yomi", () => {
+    // 新製品 is not in the vocabulary as one word, so it is segmented; the
+    // leftover 新 must read シン, not あたら.
+    const result = analyse("新製品");
+    expect(result.hiragana).toBe("しんせいひん");
+    expect(result.romaji).not.toContain("atara");
+  });
+
+  it("still uses kun'yomi for a kanji standing on its own", () => {
+    // 村 is only in the single-kanji list; alone it takes its kun reading.
+    expect(analyse("村").hiragana).toBe("むら");
+  });
+
+  it("keeps furigana, romaji and typing derived from the same analysis", () => {
+    const result = analyse("私はこの会社の新入社員です");
+    // The kana line is exactly the token readings concatenated.
+    expect(result.tokens.map((t) => t.reading).join("")).toBe(result.hiragana);
+    // The romaji is the token romaji, so the two can never disagree.
+    expect(result.romaji.replace(/\s+/g, "")).toBe(
+      result.tokens.map((t) => t.romaji).join(""),
+    );
+    // The typing guide comes from the same readings.
+    expect(result.typing).toBe(result.tokens.map((t) => t.typing).join(""));
+  });
+
+  it("reports the kanji it met from the same pass", () => {
+    const result = analyse("新入社員");
+    expect(result.kanji.map((k) => k.kanji)).toEqual(["新", "入", "社", "員"]);
+  });
+});
+
+describe("line independence", () => {
+  it("analyses each line without the others affecting it", () => {
+    const lines = analyseLines("私は学生です\n今日は暑い");
+    expect(lines).toHaveLength(2);
+    expect(lines[0].hiragana).toBe("わたしはがくせいです");
+    expect(lines[1].hiragana).toBe("きょうはあつい");
+  });
+
+  it("gives the same reading for a line alone as within a block", () => {
+    const alone = analyse("会議は三時に始まります。");
+    const [, second] = analyseLines("こんにちは\n会議は三時に始まります。");
+    expect(second.hiragana).toBe(alone.hiragana);
+    expect(second.romaji).toBe(alone.romaji);
+  });
+
+  it("keeps blank lines without inventing content for them", () => {
+    const lines = analyseLines("私\n\n学生");
+    expect(lines).toHaveLength(3);
+    expect(lines[1].tokens).toEqual([]);
+    expect(lines[1].romaji).toBe("");
   });
 });
