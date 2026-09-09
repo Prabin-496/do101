@@ -1,5 +1,7 @@
 import { KANJI_MAP, WORDS, WORD_MAP, type KanjiEntry, type WordEntry } from "./dictionary";
-import { hasJapanese, isKana, isKanji, kanaToRomaji, toHiragana, typingString } from "./kana";
+import {
+  hasJapanese, isKana, isKanji, kanaToHepburn, kanaToRomaji, toHiragana, typingString,
+} from "./kana";
 
 /**
  * Japanese lexical analysis.
@@ -237,6 +239,32 @@ function okurigana(text: string, from: number): string {
   return taken;
 }
 
+
+/**
+ * Gemination in Sino-Japanese compounds.
+ *
+ * When two on'yomi meet, a final ツ or チ regularly becomes っ before a
+ * voiceless consonant, and a following は-row kana hardens to ぱ: 設(セツ) plus
+ * 定(テイ) is せってい, not せつてい, and 出(シュツ) plus 発(ハツ) is しゅっぱつ.
+ *
+ * ク and キ do the same, but only before the か row — 学校 is がっこう while
+ * 学生 stays がくせい — so they are handled separately rather than lumped in.
+ */
+const GEMINATE_AFTER_TSU = /^[かきくけこさしすせそたちつてとはひふへほ]/;
+const GEMINATE_AFTER_KU = /^[かきくけこ]/;
+const HARDEN: Record<string, string> = { は: "ぱ", ひ: "ぴ", ふ: "ぷ", へ: "ぺ", ほ: "ぽ" };
+
+function joinCompoundReadings(left: string, right: string): string {
+  if (!left || !right) return left + right;
+  const last = left[left.length - 1];
+  const geminates =
+    ((last === "つ" || last === "ち") && GEMINATE_AFTER_TSU.test(right)) ||
+    ((last === "く" || last === "き") && GEMINATE_AFTER_KU.test(right));
+  if (!geminates) return left + right;
+  const head = HARDEN[right[0]] ?? right[0];
+  return `${left.slice(0, -1)}っ${head}${right.slice(1)}`;
+}
+
 /* ------------------------------------------------------------------ */
 /* Compound segmentation                                               */
 /* ------------------------------------------------------------------ */
@@ -254,7 +282,7 @@ interface Segment {
  * match first. A dictionary word costs 1 and an unmatched character costs 4, so
  * any segmentation into real words beats falling back character by character.
  */
-function segmentKanjiRun(run: string): Segment[] {
+function segmentKanjiRun(run: string, insideCompound: boolean): Segment[] {
   const n = run.length;
   const cost = new Array<number>(n + 1).fill(Number.POSITIVE_INFINITY);
   const take = new Array<number>(n + 1).fill(1);
@@ -267,6 +295,12 @@ function segmentKanjiRun(run: string): Segment[] {
       const candidate = run.slice(i, i + length);
       const entry = KANJI_WORDS.get(candidate);
       if (!entry) continue;
+      // A one-character entry holds the reading that character takes alone —
+      // 国 is "kuni". Inside a compound it takes its on'yomi instead, so 国際
+      // is "kokusai" and not "kunisai". Skip it and let the fallback read it.
+      if (insideCompound && length === 1 && (KANJI_MAP.get(candidate)?.on.length ?? 0) > 0) {
+        continue;
+      }
       const total = 1 + cost[i + length];
       if (total < cost[i]) {
         cost[i] = total;
@@ -289,20 +323,63 @@ function segmentKanjiRun(run: string): Segment[] {
   return segments;
 }
 
-/** Turns a segmented kanji run into tokens. */
+/**
+ * Turns a segmented kanji run into tokens.
+ *
+ * Characters that fall through to a per-character reading are merged back into
+ * one token when they sit next to each other, because they are one compound:
+ * 開発 should read "kaihatsu" as a unit rather than "kai hatsu" as two.
+ */
 function tokensForRun(run: string): Token[] {
-  const segments = segmentKanjiRun(run);
   const insideCompound = run.length > 1;
+  const segments = segmentKanjiRun(run, insideCompound);
+  const tokens: Token[] = [];
 
-  return segments.map((segment) => {
+  let pending: { surface: string; reading: string; resolved: boolean } | null = null;
+
+  const flush = () => {
+    if (!pending) return;
+    const { surface, reading, resolved } = pending;
+    pending = null;
+    if (!resolved) {
+      tokens.push(
+        makeToken({
+          surface,
+          reading: "",
+          romaji: UNRESOLVED_ROMAJI,
+          meaning: KANJI_MAP.get(surface)?.meaning,
+          source: "unresolved",
+        }),
+      );
+      return;
+    }
+    const source = insideCompound ? "compound" : "kanji";
+    tokens.push(
+      makeToken({
+        surface,
+        reading,
+        // A compound read from its kanji is still one word, so it takes the
+        // macron form like any other.
+        romaji: source === "compound" ? kanaToHepburn(reading) : kanaToRomaji(reading),
+        meaning: surface.length === 1 ? KANJI_MAP.get(surface)?.meaning : undefined,
+        source,
+      }),
+    );
+  };
+
+  for (const segment of segments) {
     if (segment.entry) {
-      return makeToken({
-        surface: segment.surface,
-        reading: segment.entry.reading,
-        romaji: kanaToRomaji(segment.entry.reading),
-        meaning: segment.entry.meaning,
-        source: "word",
-      });
+      flush();
+      tokens.push(
+        makeToken({
+          surface: segment.surface,
+          reading: segment.entry.reading,
+          romaji: kanaToHepburn(segment.entry.reading),
+          meaning: segment.entry.meaning,
+          source: "word",
+        }),
+      );
+      continue;
     }
 
     const entry = KANJI_MAP.get(segment.surface);
@@ -311,25 +388,120 @@ function tokensForRun(run: string): Token[] {
         ? compoundReading(entry)
         : standaloneReading(entry)
       : "";
+    const resolved = reading !== "";
 
-    if (!reading) {
-      return makeToken({
-        surface: segment.surface,
-        reading: "",
-        romaji: UNRESOLVED_ROMAJI,
-        meaning: entry?.meaning,
-        source: "unresolved",
-      });
+    // Only merge with the run so far if both sides resolved the same way.
+    if (pending && pending.resolved === resolved) {
+      pending.surface += segment.surface;
+      pending.reading = resolved
+        ? joinCompoundReadings(pending.reading, reading)
+        : pending.reading + reading;
+    } else {
+      flush();
+      pending = { surface: segment.surface, reading, resolved };
     }
+  }
+  flush();
 
-    return makeToken({
-      surface: segment.surface,
-      reading,
-      romaji: kanaToRomaji(reading),
-      meaning: entry?.meaning,
-      source: insideCompound ? "compound" : "kanji",
-    });
-  });
+  return tokens;
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Numbers and counters                                                */
+/* ------------------------------------------------------------------ */
+
+const DIGIT_KANA = ["ゼロ", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
+
+/** Magnitudes that join a numeral directly: 1億 is one word, ichioku. */
+const MAGNITUDES: Record<string, string> = {
+  十: "じゅう", 百: "ひゃく", 千: "せん", 万: "まん", 億: "おく", 兆: "ちょう",
+};
+
+/** Counters, which Hepburn hyphenates off the number: 1億円 is ichioku-en. */
+const COUNTERS: Record<string, string> = {
+  円: "えん", 人: "にん", 個: "こ", 時: "じ", 年: "ねん", 月: "がつ", 日: "にち",
+  回: "かい", 本: "ほん", 枚: "まい", 台: "だい", 匹: "ひき", 冊: "さつ",
+  歳: "さい", 才: "さい", 秒: "びょう", 杯: "はい", 軒: "けん", 番: "ばん",
+  階: "かい", 度: "ど", 名: "めい", 件: "けん", 部: "ぶ", 割: "わり",
+};
+
+/** Reads a run of digits as Japanese, up to four figures. */
+function digitsToKana(digits: string): string {
+  const normalised = digits.replace(/[０-９]/g, (d) => String(d.charCodeAt(0) - 0xff10));
+  const value = Number(normalised);
+  if (!Number.isFinite(value)) return "";
+  if (value === 0) return "ゼロ";
+  if (value < 10) return DIGIT_KANA[value];
+  // Above four figures the grouping rules differ enough that reading it here
+  // would be guesswork, so the digits are left as they are.
+  if (value > 9999) return "";
+
+  const irregularHundreds: Record<number, string> = { 3: "さんびゃく", 6: "ろっぴゃく", 8: "はっぴゃく" };
+  const irregularThousands: Record<number, string> = { 3: "さんぜん", 8: "はっせん" };
+
+  let out = "";
+  const thousands = Math.floor(value / 1000);
+  const hundreds = Math.floor((value % 1000) / 100);
+  const tens = Math.floor((value % 100) / 10);
+  const ones = value % 10;
+
+  if (thousands) {
+    out += irregularThousands[thousands] ?? (thousands === 1 ? "せん" : `${DIGIT_KANA[thousands]}せん`);
+  }
+  if (hundreds) {
+    out += irregularHundreds[hundreds] ?? (hundreds === 1 ? "ひゃく" : `${DIGIT_KANA[hundreds]}ひゃく`);
+  }
+  if (tens) out += tens === 1 ? "じゅう" : `${DIGIT_KANA[tens]}じゅう`;
+  if (ones) out += DIGIT_KANA[ones];
+  return out;
+}
+
+interface NumeralMatch {
+  surface: string;
+  reading: string;
+  romaji: string;
+  meaning?: string;
+}
+
+/**
+ * Reads a numeral written in digits together with the kanji that follow it.
+ *
+ * Magnitudes join the number, counters are hyphenated off it, which is what
+ * Hepburn does: 1億円 is ichioku-en.
+ */
+function matchNumeral(text: string, index: number): NumeralMatch | null {
+  const digits = /^[0-9０-９]+/.exec(text.slice(index))?.[0];
+  if (!digits) return null;
+
+  let cursor = index + digits.length;
+  let magnitudeKana = "";
+  let magnitudeSurface = "";
+  while (cursor < text.length && MAGNITUDES[text[cursor]]) {
+    magnitudeKana += MAGNITUDES[text[cursor]];
+    magnitudeSurface += text[cursor];
+    cursor += 1;
+  }
+
+  const counterChar = cursor < text.length ? text[cursor] : "";
+  const counterKana = COUNTERS[counterChar] ?? "";
+  if (counterKana) cursor += 1;
+
+  // Bare digits with nothing attached are left to the passthrough branch.
+  if (!magnitudeSurface && !counterKana) return null;
+
+  const numberKana = digitsToKana(digits);
+  if (!numberKana) return null;
+
+  const head = numberKana + magnitudeKana;
+  return {
+    surface: text.slice(index, cursor),
+    reading: head + counterKana,
+    romaji: counterKana
+      ? `${kanaToHepburn(head)}-${kanaToHepburn(counterKana)}`
+      : kanaToHepburn(head),
+    meaning: counterKana ? KANJI_MAP.get(counterChar)?.meaning : undefined,
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -385,7 +557,10 @@ export function analyse(text: string): Analysis {
         makeToken({
           surface: key,
           reading: entry.reading,
-          romaji: kanaToRomaji(entry.reading),
+          // Hepburn macrons: a word is one unit, so its long vowels are real.
+          romaji: [...key].every((c) => isKanji(c))
+            ? kanaToHepburn(entry.reading)
+            : kanaToRomaji(entry.reading),
           meaning: entry.meaning,
           source: "word",
         }),
@@ -487,6 +662,22 @@ export function analyse(text: string): Analysis {
         }),
       );
       index += run.length;
+      continue;
+    }
+
+    // A numeral written in digits, with its magnitude and counter attached.
+    const numeral = matchNumeral(text, index);
+    if (numeral) {
+      tokens.push(
+        makeToken({
+          surface: numeral.surface,
+          reading: numeral.reading,
+          romaji: numeral.romaji,
+          meaning: numeral.meaning,
+          source: "word",
+        }),
+      );
+      index += numeral.surface.length;
       continue;
     }
 

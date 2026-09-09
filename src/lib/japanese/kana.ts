@@ -367,3 +367,33 @@ export function typingString(text: string): string {
     .map((step) => step.keys || `[${step.kana}]`)
     .join("");
 }
+
+/**
+ * Hepburn romanisation with macrons for long vowels.
+ *
+ * This is the form used on road signs, in passports and in most textbooks:
+ * 環境 is kankyō, not kankyou. It is what you read, not what you type — the
+ * typing guide keeps the keystroke spelling, because "kankyō" is not something
+ * a keyboard can produce.
+ *
+ * Only applied where the caller knows the whole reading is one word, since
+ * "ou" spanning a morpheme boundary is not a long vowel: 思う is omou, never
+ * omō. "ei" and "ii" are left alone, as Hepburn does.
+ */
+export function kanaToHepburn(kana: string): string {
+  return kanaToRomaji(kana)
+    .replace(/ou/g, "ō")
+    .replace(/oo/g, "ō")
+    .replace(/uu/g, "ū")
+    .replace(/aa/g, "ā")
+    .replace(/ee/g, "ē");
+}
+
+/** Strips macrons back to the plain vowels, for search and comparison. */
+export function stripMacrons(text: string): string {
+  return text
+    .replace(/ō/g, "ou")
+    .replace(/ū/g, "uu")
+    .replace(/ā/g, "aa")
+    .replace(/ē/g, "ee");
+}

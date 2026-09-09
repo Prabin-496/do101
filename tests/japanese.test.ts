@@ -6,6 +6,7 @@ import {
 import { analyse, analyseLines, kanjiIn } from "../src/lib/japanese/annotate";
 import { KANJI, WORDS } from "../src/lib/japanese/dictionary";
 import { splitForTranslation, worthTranslating } from "../src/lib/japanese/translate";
+import { checkPoliteness, toMasuForm } from "../src/lib/japanese/politeness";
 
 describe("kana to romaji", () => {
   it("romanises everyday words in modified Hepburn", () => {
@@ -189,7 +190,7 @@ it("reads the three irregular particles as they are pronounced", () => {
     // Written は/へ/を, pronounced wa/e/o when they act as particles.
     expect(analyse("私は学生です").romaji).toContain("watashi wa");
     expect(analyse("日本語を勉強します").romaji).toContain("nihongo o");
-    expect(analyse("東京へ行きます").romaji).toContain("toukyou e");
+    expect(analyse("東京へ行きます").romaji).toContain("tōkyō e");
   });
 
   it("does not mistake は inside a word for a particle", () => {
@@ -272,15 +273,15 @@ describe("whole-sentence readings", () => {
     [
       "私は毎日日本語を勉強しています。",
       "わたしはまいにちにほんごをべんきょうしています。",
-      "watashi wa mainichi nihongo o benkyou shiteimasu。",
+      "watashi wa mainichi nihongo o benkyō shiteimasu。",
     ],
     ["最寄りの駅はどこですか。", "もよりのえきはどこですか。", "moyori no eki wa dokodesuka。"],
     // 今日は must read "kyou wa" (today), not "konnichiha" (hello).
-    ["今日は天気がいいですね。", "きょうはてんきがいいですね。", "kyou wa tenki ga iidesune。"],
+    ["今日は天気がいいですね。", "きょうはてんきがいいですね。", "kyō wa tenki ga iidesune。"],
     [
       "この電車は東京へ行きますか。",
       "このでんしゃはとうきょうへいきますか。",
-      "kono densha wa toukyou e ikimasu ka。",
+      "kono densha wa tōkyō e ikimasu ka。",
     ],
     // 彼女 is one word; reading it as 彼 + 女 gives "onna" and loses the meaning.
     [
@@ -352,7 +353,7 @@ describe("compound recognition", () => {
 
   it("reads 新入社員 as vocabulary rather than four separate kanji", () => {
     const result = analyse("私はこの会社の新入社員です");
-    expect(result.romaji).toBe("watashi wa kono kaisha no shinnyuu shain desu");
+    expect(result.romaji).toBe("watashi wa kono kaisha no shinnyū shain desu");
     expect(result.hiragana).toBe("わたしはこのかいしゃのしんにゅうしゃいんです");
   });
 
@@ -389,39 +390,39 @@ describe("compound recognition", () => {
 
   it("reads 30 common compounds correctly", () => {
     const COMPOUNDS: Array<[word: string, reading: string, romaji: string]> = [
-      ["新入社員", "しんにゅうしゃいん", "shinnyuu shain"],
+      ["新入社員", "しんにゅうしゃいん", "shinnyū shain"],
       ["会社", "かいしゃ", "kaisha"],
       ["日本語", "にほんご", "nihongo"],
-      ["勉強", "べんきょう", "benkyou"],
-      ["今日", "きょう", "kyou"],
+      ["勉強", "べんきょう", "benkyō"],
+      ["今日", "きょう", "kyō"],
       ["大学生", "だいがくせい", "daigakusei"],
       ["社員", "しゃいん", "shain"],
       ["会議室", "かいぎしつ", "kaigishitsu"],
-      ["電話番号", "でんわばんごう", "denwabangou"],
+      ["電話番号", "でんわばんごう", "denwabangō"],
       ["図書館", "としょかん", "toshokan"],
       ["自転車", "じてんしゃ", "jitensha"],
       ["新幹線", "しんかんせん", "shinkansen"],
-      ["飛行機", "ひこうき", "hikouki"],
-      ["郵便局", "ゆうびんきょく", "yuubinkyoku"],
-      ["高校生", "こうこうせい", "koukousei"],
-      ["留学生", "りゅうがくせい", "ryuugakusei"],
-      ["天気予報", "てんきよほう", "tenkiyohou"],
-      ["誕生日", "たんじょうび", "tanjoubi"],
-      ["月曜日", "げつようび", "getsuyoubi"],
-      ["日曜日", "にちようび", "nichiyoubi"],
+      ["飛行機", "ひこうき", "hikōki"],
+      ["郵便局", "ゆうびんきょく", "yūbinkyoku"],
+      ["高校生", "こうこうせい", "kōkōsei"],
+      ["留学生", "りゅうがくせい", "ryūgakusei"],
+      ["天気予報", "てんきよほう", "tenkiyohō"],
+      ["誕生日", "たんじょうび", "tanjōbi"],
+      ["月曜日", "げつようび", "getsuyōbi"],
+      ["日曜日", "にちようび", "nichiyōbi"],
       ["喫茶店", "きっさてん", "kissaten"],
       ["美術館", "びじゅつかん", "bijutsukan"],
-      ["冷蔵庫", "れいぞうこ", "reizouko"],
+      ["冷蔵庫", "れいぞうこ", "reizōko"],
       ["携帯電話", "けいたいでんわ", "keitaidenwa"],
       ["履歴書", "りれきしょ", "rirekisho"],
       ["打ち合わせ", "うちあわせ", "uchiawase"],
-      ["出張", "しゅっちょう", "shutchou"],
-      ["残業", "ざんぎょう", "zangyou"],
-      ["給料", "きゅうりょう", "kyuuryou"],
+      ["出張", "しゅっちょう", "shutchō"],
+      ["残業", "ざんぎょう", "zangyō"],
+      ["給料", "きゅうりょう", "kyūryō"],
       ["確認", "かくにん", "kakunin"],
       ["説明", "せつめい", "setsumei"],
       ["経済", "けいざい", "keizai"],
-      ["環境", "かんきょう", "kankyou"],
+      ["環境", "かんきょう", "kankyō"],
       ["文化", "ぶんか", "bunka"],
     ];
 
@@ -513,5 +514,180 @@ describe("line independence", () => {
     expect(lines).toHaveLength(3);
     expect(lines[1].tokens).toEqual([]);
     expect(lines[1].romaji).toBe("");
+  });
+});
+
+/**
+ * Word-level analysis before kanji-level fallback.
+ *
+ * Every case here previously came out wrong by reading the kanji one at a time:
+ * 信者 as しんしゃ rather than しんじゃ, 国際 as くにさい because 国 has a
+ * one-character dictionary entry carrying its kun reading, 開発 as かい？ because
+ * 発 was missing entirely.
+ */
+describe("word-level readings", () => {
+  const CASES: Array<[text: string, kana: string, romaji: string]> = [
+    ["実業", "じつぎょう", "jitsugyō"],
+    ["沢氏", "さわし", "sawashi"],
+    ["友作", "ともさく", "tomosaku"],
+    ["信者", "しんじゃ", "shinja"],
+    ["総額", "そうがく", "sōgaku"],
+    ["1億円", "いちおくえん", "ichioku-en"],
+    ["与える", "あたえる", "ataeru"],
+    ["配分", "はいぶん", "haibun"],
+    ["注目", "ちゅうもく", "chūmoku"],
+    ["簡単に", "かんたんに", "kantan ni"],
+    ["申請すると", "しんせいすると", "shinsei suru to"],
+    ["情報", "じょうほう", "jōhō"],
+    ["危険", "きけん", "kiken"],
+    ["開発環境", "かいはつかんきょう", "kaihatsu kankyō"],
+    ["国際関係", "こくさいかんけい", "kokusai kankei"],
+    ["経済成長", "けいざいせいちょう", "keizai seichō"],
+  ];
+
+  it.each(CASES)("reads %s", (text, kana, romaji) => {
+    const result = analyse(text);
+    expect(result.hiragana).toBe(kana);
+    expect(result.romaji).toBe(romaji);
+  });
+
+  it("puts no question mark in the romaji for any of them", () => {
+    for (const [text] of CASES) {
+      expect(analyse(text).romaji, text).not.toContain("?");
+      expect(analyse(text).unresolved, text).toEqual([]);
+    }
+  });
+
+  it("reads a compound from its on'yomi, not the kun reading of a single-kanji entry", () => {
+    // 国 alone is くに, but 国際 is こくさい — the entry must not win here.
+    expect(analyse("国際").hiragana).toBe("こくさい");
+    // Standing alone it still reads くに.
+    expect(analyse("国").hiragana).toBe("くに");
+  });
+
+  it("merges neighbouring fallback characters into one word", () => {
+    // 開発 is not in the vocabulary as a pair of characters to be read apart.
+    const result = analyse("経済成長");
+    expect(result.tokens.map((t) => t.surface)).toEqual(["経済", "成長"]);
+  });
+});
+
+describe("Hepburn romanisation", () => {
+  it("writes long vowels with macrons", () => {
+    for (const [text, romaji] of [
+      ["東京", "tōkyō"],
+      ["学校", "gakkō"],
+      ["空港", "kūkō"],
+      ["環境", "kankyō"],
+      ["勉強", "benkyō"],
+      ["情報", "jōhō"],
+    ] as const) {
+      expect(analyse(text).romaji, text).toBe(romaji);
+    }
+  });
+
+  it("leaves ei and ii alone, as Hepburn does", () => {
+    expect(analyse("先生").romaji).toBe("sensei");
+    expect(analyse("大学生").romaji).toBe("daigakusei");
+  });
+
+  it("does not put a macron across a verb ending", () => {
+    // 思う is omou: the う is the verb ending, not a long vowel.
+    expect(analyse("思う").romaji).toBe("omou");
+    expect(analyse("使う").romaji).toBe("tsukau");
+  });
+
+  it("keeps the typing guide in keystroke spelling, not macrons", () => {
+    // You cannot type "ō"; the typing line has to stay typeable.
+    const result = analyse("東京");
+    expect(result.romaji).toBe("tōkyō");
+    expect(result.typing).toBe("toukyou");
+  });
+});
+
+describe("politeness", () => {
+  it("spots plain form and rewrites it into ですます", () => {
+    for (const [plain, polite] of [
+      ["私は学生だ。", "私は学生です。"],
+      ["毎日日本語を勉強する。", "毎日日本語を勉強します。"],
+      ["駅へ行く。", "駅へ行きます。"],
+      ["水を飲む。", "水を飲みます。"],
+      ["この本は面白い。", "この本は面白いです。"],
+      ["彼は先生ではない。", "彼は先生ではありません。"],
+    ] as const) {
+      const report = checkPoliteness(plain);
+      expect(report.register, plain).toBe("plain");
+      expect(report.polite, plain).toBe(polite);
+    }
+  });
+
+  it("leaves text that is already polite alone", () => {
+    for (const text of ["私は学生です。", "駅へ行きます。", "お願いします。"]) {
+      const report = checkPoliteness(text);
+      expect(report.register, text).toBe("polite");
+      expect(report.polite, text).toBeNull();
+    }
+  });
+
+  it("declines to rewrite what it cannot do confidently", () => {
+    // Past-tense plain forms need the verb reconstructed, which is beyond
+    // these rules — so nothing is changed rather than changed wrongly.
+    const report = checkPoliteness("昨日映画を見た。");
+    expect(report.polite).toBeNull();
+  });
+
+  it("conjugates godan and ichidan verbs differently", () => {
+    expect(toMasuForm("行く")).toBe("行きます");
+    expect(toMasuForm("飲む")).toBe("飲みます");
+    expect(toMasuForm("話す")).toBe("話します");
+    // 見る is ichidan and drops る; 帰る is godan and shifts it.
+    expect(toMasuForm("見る")).toBe("見ます");
+    expect(toMasuForm("帰る")).toBe("帰ります");
+    expect(toMasuForm("する")).toBe("します");
+  });
+
+  it("handles an empty document", () => {
+    const report = checkPoliteness("");
+    expect(report.register).toBe("unknown");
+    expect(report.sentences).toEqual([]);
+  });
+});
+
+describe("numerals and counters", () => {
+  it("reads digits together with their magnitude and counter", () => {
+    for (const [text, kana, romaji] of [
+      ["1億円", "いちおくえん", "ichioku-en"],
+      ["3人", "さんにん", "san-nin"],
+      ["5000円", "ごせんえん", "gosen-en"],
+      ["12歳", "じゅうにさい", "jūni-sai"],
+    ] as const) {
+      expect(analyse(text).hiragana, text).toBe(kana);
+      expect(analyse(text).romaji, text).toBe(romaji);
+    }
+  });
+
+  it("leaves a bare number as it is", () => {
+    expect(analyse("2026").romaji).toBe("2026");
+  });
+});
+
+describe("on'yomi gemination", () => {
+  it("geminates where the rule applies", () => {
+    for (const [text, kana] of [
+      ["設定", "せってい"],
+      ["実行", "じっこう"],
+      ["決定", "けってい"],
+      ["出発", "しゅっぱつ"],
+    ] as const) {
+      expect(analyse(text).hiragana, text).toBe(kana);
+    }
+  });
+
+  it("does not geminate where it does not", () => {
+    // く only geminates before the か row, so 学生 stays がくせい, and べ is not
+    // a trigger at all, so 特別 stays とくべつ.
+    expect(analyse("特別").hiragana).toBe("とくべつ");
+    expect(analyse("学生").hiragana).toBe("がくせい");
+    expect(analyse("開発").hiragana).toBe("かいはつ");
   });
 });

@@ -46,6 +46,8 @@ export const JAPANESE_TOOLS: Tool[] = [
       "Word by word: reading above, pronunciation below, meaning underneath",
       "Handles inflected verbs, so 行きました reads ikimashita rather than i kimashita",
       "Reads は, へ and を as wa, e and o when they are particles",
+      "Standard Hepburn romaji with macrons — kankyō, not kankyou",
+      "Rewrites a plain-form translation into standard polite Japanese",
       "Kanji cards with on and kun readings and what to type for each",
       "Keystrokes for the whole sentence on a Japanese IME",
       "Read aloud using your device's own Japanese voice",
@@ -61,8 +63,16 @@ export const JAPANESE_TOOLS: Tool[] = [
         a: "Good for everyday sentences and unreliable for anything subtle, like any free machine translation. The tool shows the service's own match score so you can see whether a result came from a close match in its translation memory or from raw machine translation. Never submit a machine translation as your own work without checking it.",
       },
       {
+        q: "Why does the translation come out polite when I did not ask for it?",
+        a: "Because machine translation returns whatever register happens to sit in its memory, and for English input that is often the plain form — 行く rather than 行きます. Plain form is fine between friends and wrong for an email, a form, a shop, or anyone you have just met. So a plain-form result is rewritten into ですます form and labelled as adjusted, with a toggle to see exactly what the service returned. Past-tense plain forms are left alone and marked, because rewriting those confidently needs more than these rules can do.",
+      },
+      {
+        q: "Which romanisation is used?",
+        a: "Standard Hepburn, with macrons for long vowels: 環境 is kankyō and 東京 is tōkyō, as they appear on road signs and in passports. Macrons are only applied inside a single word, so 思う stays omou — the う there is the verb ending, not a long vowel. The typing guide keeps the keystroke spelling, since you cannot type ō.",
+      },
+      {
         q: "Are the readings always right?",
-        a: "Kana readings are exact, because kana map to sounds one-to-one. Words in the bundled vocabulary are reliable. A single kanji outside that vocabulary is shown with its most common standalone reading and marked as approximate, because the same kanji is often read differently inside a compound. Anything unknown is left blank rather than guessed.",
+        a: "Kana readings are exact, because kana map to sounds one-to-one. Words in the bundled vocabulary are reliable. Beyond that, a run of two or more kanji is read with the on'yomi of each character — which is how Sino-Japanese compounds work — and marked approximate, because compounds sometimes shift sound. The regular shifts are handled: 設定 comes out せってい rather than せつてい. Personal names are the weak spot, since their readings cannot be derived from the kanji at all and have to be listed one by one.",
       },
       {
         q: "Why is there no furigana for some words?",

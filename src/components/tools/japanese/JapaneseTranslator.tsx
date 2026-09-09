@@ -10,6 +10,7 @@ import {
   SOURCE_NOTES, analyse, type Analysis, type Token,
 } from "@/lib/japanese/annotate";
 import { hasJapanese, typingString } from "@/lib/japanese/kana";
+import { checkPoliteness } from "@/lib/japanese/politeness";
 import type { KanjiEntry } from "@/lib/japanese/dictionary";
 import {
   TranslationError, cached, describeMatch, translateEachLine,
@@ -40,6 +41,8 @@ interface Segment {
   japanese: string;
   analysis: Analysis;
   match: number;
+  /** Set when the plain-form translation was rewritten into polite form. */
+  politeFrom?: string;
 }
 
 /**
@@ -151,6 +154,10 @@ export function JapaneseTranslator() {
   const [manualNonce, setManualNonce] = React.useState(0);
   const [selected, setSelected] = React.useState<string | null>(null);
   const [speaking, setSpeaking] = React.useState(false);
+  // Machine translation often returns the plain form, which is wrong for
+  // almost everything a learner is actually writing. Standard polite Japanese
+  // is the default, with the original one click away.
+  const [preferPolite, setPreferPolite] = React.useState(true);
 
   const hydrated = useIsHydrated();
   const reported = React.useRef(false);
@@ -227,14 +234,24 @@ export function JapaneseTranslator() {
       });
     }
 
-    return (payload?.lines ?? []).map((line) => ({
-      source: line.source,
-      translated: line.result?.text ?? "",
-      japanese: line.result?.text ?? "",
-      analysis: analyse(line.result?.text ?? ""),
-      match: line.result?.match ?? 0,
-    }));
-  }, [direction, input, payload]);
+    return (payload?.lines ?? []).map((line) => {
+      const raw = line.result?.text ?? "";
+      const politeness = raw ? checkPoliteness(raw) : null;
+      const rewritten =
+        preferPolite && politeness?.register === "plain" && politeness.polite
+          ? politeness.polite
+          : null;
+      const japanese = rewritten ?? raw;
+      return {
+        source: line.source,
+        translated: japanese,
+        japanese,
+        analysis: analyse(japanese),
+        match: line.result?.match ?? 0,
+        politeFrom: rewritten ? raw : undefined,
+      };
+    });
+  }, [direction, input, payload, preferPolite]);
 
   const filled = segments.filter((s) => s.japanese.trim());
   const allKanji = React.useMemo(() => {
@@ -307,6 +324,7 @@ export function JapaneseTranslator() {
     ((direction === "ja-en" && !inputIsJapanese) || (direction === "en-ja" && inputIsJapanese));
 
   const lineCount = input.split("\n").filter((l) => l.trim()).length;
+  const adjusted = filled.map((s) => s.politeFrom).filter((v): v is string => Boolean(v));
 
   return (
     <div className="space-y-4">
@@ -415,7 +433,26 @@ export function JapaneseTranslator() {
         </Card>
       </div>
 
+      {adjusted.length > 0 ? (
+        <p className="flex flex-wrap items-center gap-2 rounded-2xl border-2 border-[var(--grass)] bg-[var(--grass-soft)] px-4 py-3 text-sm font-semibold">
+          <span aria-hidden>🎩</span>
+          <span>
+            <strong className="font-extrabold">Adjusted to standard polite Japanese.</strong>{" "}
+            The translation came back in plain form
+            {adjusted.length === 1 ? "" : ` on ${adjusted.length} lines`} — fine between friends,
+            but not for an email, a form or anyone you have just met. Original:{" "}
+            <span lang="ja" className="font-bold">{adjusted[0]}</span>
+          </span>
+        </p>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-2">
+        <Toggle
+          checked={preferPolite}
+          onChange={setPreferPolite}
+          label="Standard polite Japanese"
+          description="Rewrites a plain-form translation into ですます form. Turn off to see exactly what the service returned."
+        />
         <Toggle
           checked={live}
           onChange={(value) => {
