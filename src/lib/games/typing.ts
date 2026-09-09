@@ -69,12 +69,20 @@ function mulberry32(seed: number) {
 /**
  * Deterministic text for a given seed — Typing Battle relies on both
  * players generating byte-identical text from the shared room seed.
+ *
+ * A word pool can be passed in for languages other than English; the default
+ * keeps every existing caller, including the battle handshake, unchanged.
  */
-export function generateTypingText(wordCount = 60, seed?: number): string {
+export function generateTypingText(
+  wordCount = 60,
+  seed?: number,
+  pool: string[] = WORD_POOL,
+): string {
   const rand = seed === undefined ? Math.random : mulberry32(seed);
+  const source = pool.length > 0 ? pool : WORD_POOL;
   const words: string[] = [];
   while (words.length < wordCount) {
-    words.push(WORD_POOL[Math.floor(rand() * WORD_POOL.length)]);
+    words.push(source[Math.floor(rand() * source.length)]);
   }
   return words.join(" ");
 }
