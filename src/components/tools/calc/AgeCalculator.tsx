@@ -9,6 +9,7 @@ import { ErrorState, Stat } from "@/components/ui/Feedback";
 import { calculateAge } from "@/lib/calculators/age";
 import { formatNumber } from "@/lib/utils/format";
 import { track } from "@/lib/analytics";
+import { useIsHydrated } from "@/lib/utils/use-local";
 
 function todayIso(): string {
   const d = new Date();
@@ -17,7 +18,13 @@ function todayIso(): string {
 
 export function AgeCalculator() {
   const [birth, setBirth] = React.useState("");
-  const [on, setOn] = React.useState(todayIso());
+  // Today belongs to the visitor's clock and timezone, neither of which the
+  // server shares. Filling the field in during the server render would put a
+  // different date in the value attribute than the browser computes, so it
+  // starts empty and takes today's date once this browser is in charge.
+  const hydrated = useIsHydrated();
+  const [chosen, setChosen] = React.useState<string | null>(null);
+  const on = chosen ?? (hydrated ? todayIso() : "");
 
   const result = React.useMemo(() => {
     if (!birth) return null;
@@ -52,7 +59,7 @@ export function AgeCalculator() {
             <Label htmlFor="on-date" hint="defaults to today">
               Age on
             </Label>
-            <Input id="on-date" type="date" value={on} onChange={(e) => setOn(e.target.value)} />
+            <Input id="on-date" type="date" value={on} onChange={(e) => setChosen(e.target.value)} />
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -60,7 +67,7 @@ export function AgeCalculator() {
             tone="ghost"
             onClick={() => {
               setBirth("");
-              setOn(todayIso());
+              setChosen(null);
             }}
             disabled={!birth}
           >

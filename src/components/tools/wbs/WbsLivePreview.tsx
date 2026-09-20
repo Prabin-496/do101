@@ -1,13 +1,16 @@
 "use client";
 
 import * as React from "react";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
 import { wbsToDiagram } from "@/lib/wbs/chart";
-import { describeRange, ganttRange } from "@/lib/wbs/gantt";
 import type { WbsDoc, WbsRow } from "@/lib/wbs/model";
 import { WbsChart } from "./WbsChart";
+import { copyGridForSpreadsheet } from "@/lib/wbs/clipboard";
+import { buildGanttGrid, describeRange, ganttRange } from "@/lib/wbs/gantt";
 import { buildGrid } from "@/lib/wbs/grid";
+import { flatten } from "@/lib/wbs/model";
 import { WbsGantt } from "./WbsGantt";
 import { WbsSheetPreview } from "./WbsSheetPreview";
 
@@ -51,8 +54,14 @@ export function WbsLivePreview({
   onAddSibling: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
+  const [copied, setCopied] = React.useState(false);
+  const [failed, setFailed] = React.useState(false);
+
   const chart = React.useMemo(() => wbsToDiagram(doc, rows), [doc, rows]);
   const grid = React.useMemo(() => buildGrid(doc), [doc]);
+  // The whole plan, not only what is on screen — a folded branch is still
+  // part of it, which is how the spreadsheet export behaves too.
+  const ganttGrid = React.useMemo(() => buildGanttGrid(doc, flatten(doc)), [doc]);
   const all: { id: PreviewKind; label: string }[] = [
     { id: "chart", label: "Chart" },
     { id: "gantt", label: "Gantt" },
@@ -89,6 +98,38 @@ export function WbsLivePreview({
               : `${grid.rows.length} rows × ${grid.columns.length} columns · exactly what downloads`}
         </span>
       </div>
+
+      {showing === "chart" ? null : (
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            tone={copied ? "grass" : "panel"}
+            onClick={async () => {
+              setFailed(false);
+              try {
+                await copyGridForSpreadsheet(showing === "gantt" ? ganttGrid : grid);
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 1600);
+              } catch {
+                setFailed(true);
+              }
+            }}
+          >
+            {copied ? "Copied — paste into Excel" : "Copy for Excel"}
+          </Button>
+          {failed ? (
+            <span className="text-xs font-bold text-[var(--cherry)]">
+              This browser blocked the clipboard — use a download instead.
+            </span>
+          ) : (
+            <span className="text-xs font-semibold text-[var(--muted)]">
+              {showing === "gantt"
+                ? "Timeline columns included, one per period."
+                : "Every row and column, exactly as it downloads."}
+            </span>
+          )}
+        </div>
+      )}
 
       {showing === "gantt" ? (
         <WbsGantt doc={doc} rows={rows} selectedId={selectedId} onSelect={onSelect} height={460} />

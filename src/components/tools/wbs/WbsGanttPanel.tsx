@@ -8,7 +8,8 @@ import { ErrorState, InfoNote, SuccessNote } from "@/components/ui/Feedback";
 import { cn } from "@/lib/utils/cn";
 import { track } from "@/lib/analytics";
 import { buildGanttGrid } from "@/lib/wbs/gantt";
-import { gridToCsv, gridToHtml, gridToTsv } from "@/lib/wbs/grid";
+import { copyGridForSpreadsheet } from "@/lib/wbs/clipboard";
+import { gridToCsv } from "@/lib/wbs/grid";
 import { flatten, type GanttScale, type GanttSettings, type WbsDoc, type WbsRow } from "@/lib/wbs/model";
 import { buildWorkbook, workbookFilename } from "@/lib/wbs/workbook";
 import { WbsGantt } from "./WbsGantt";
@@ -27,31 +28,6 @@ function save(blob: Blob, filename: string) {
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
-}
-
-/**
- * Copies the grid in both flavours a spreadsheet understands.
- *
- * Excel takes the HTML when it is offered, which keeps a WBS code like 1.10
- * as text instead of turning it into a number; the tab-separated copy is the
- * fallback everything else reads.
- */
-async function copyForSpreadsheet(tsv: string, html: string): Promise<void> {
-  const clipboard = navigator.clipboard;
-  if (typeof ClipboardItem !== "undefined" && clipboard?.write) {
-    try {
-      await clipboard.write([
-        new ClipboardItem({
-          "text/plain": new Blob([tsv], { type: "text/plain" }),
-          "text/html": new Blob([html], { type: "text/html" }),
-        }),
-      ]);
-      return;
-    } catch {
-      // Some browsers refuse the rich flavour; the plain one still works.
-    }
-  }
-  await clipboard.writeText(tsv);
 }
 
 export function WbsGanttPanel({
@@ -83,7 +59,7 @@ export function WbsGanttPanel({
   async function copy() {
     setError(null);
     try {
-      await copyForSpreadsheet(gridToTsv(grid), gridToHtml(grid));
+      await copyGridForSpreadsheet(grid);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
       track("tool_complete", { tool: "wbs", format: "gantt-copy" });

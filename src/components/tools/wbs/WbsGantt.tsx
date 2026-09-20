@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils/cn";
+import { useIsHydrated } from "@/lib/utils/use-local";
 import { paletteFor, swatchIndex } from "@/lib/wbs/chart";
 import {
   buildPeriods,
@@ -62,10 +63,12 @@ export function WbsGantt({
     };
   }, [doc, rows, settings]);
 
-  const today = todayIso();
+  // Today comes from the visitor's clock, which a server render cannot know,
+  // so the line waits for this browser rather than risking a mismatch.
+  const hydrated = useIsHydrated();
   const span = Math.max(1, dayDiff(range.start, range.end) + 1);
-  const todayOffset = dayDiff(range.start, today);
-  const showToday = settings.showToday && todayOffset >= 0 && todayOffset < span;
+  const todayOffset = hydrated ? dayDiff(range.start, todayIso()) : -1;
+  const showToday = settings.showToday && hydrated && todayOffset >= 0 && todayOffset < span;
 
   return (
     <div className="space-y-2">

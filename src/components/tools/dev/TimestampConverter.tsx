@@ -9,6 +9,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { ErrorState, Stat } from "@/components/ui/Feedback";
 import { describeTimestamp, dateToTimestamp, type TimestampUnit } from "@/lib/dev/timestamp";
 import { track } from "@/lib/analytics";
+import { useNow } from "@/lib/utils/use-now";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -29,12 +30,9 @@ export function TimestampConverter() {
   const [raw, setRaw] = React.useState("");
   const [unit, setUnit] = React.useState<TimestampUnit | "auto">("auto");
   const [dateValue, setDateValue] = React.useState("");
-  const [now, setNow] = React.useState(() => Date.now());
-
-  React.useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
+  // Null while rendering on the server, so hydration cannot disagree about
+  // which millisecond it is. See use-now for why this is a store.
+  const now = useNow();
 
   const info = React.useMemo(() => {
     if (mode === "toDate") {
@@ -61,12 +59,12 @@ export function TimestampConverter() {
             Current Unix time
           </p>
           <p className="font-mono text-2xl font-extrabold tabular-nums">
-            {Math.floor(now / 1000)}
+            {now === null ? "—" : Math.floor(now / 1000)}
           </p>
         </div>
         <div className="flex gap-2">
-          <CopyButton value={String(Math.floor(now / 1000))} label="Copy seconds" />
-          <CopyButton value={String(now)} label="Copy ms" />
+          <CopyButton value={now === null ? "" : String(Math.floor(now / 1000))} label="Copy seconds" />
+          <CopyButton value={now === null ? "" : String(now)} label="Copy ms" />
         </div>
       </Card>
 
