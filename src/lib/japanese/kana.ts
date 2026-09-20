@@ -25,13 +25,16 @@ const BASE: Array<[hiragana: string, katakana: string, romaji: string]> = [
   ["びゃ", "ビャ", "bya"], ["びゅ", "ビュ", "byu"], ["びょ", "ビョ", "byo"],
   ["ぴゃ", "ピャ", "pya"], ["ぴゅ", "ピュ", "pyu"], ["ぴょ", "ピョ", "pyo"],
 
-  // Katakana-only combinations used for loanwords.
-  ["", "ヴァ", "va"], ["", "ヴィ", "vi"], ["", "ヴェ", "ve"], ["", "ヴォ", "vo"],
-  ["", "ファ", "fa"], ["", "フィ", "fi"], ["", "フェ", "fe"], ["", "フォ", "fo"],
-  ["", "ウィ", "wi"], ["", "ウェ", "we"], ["", "ウォ", "wo"],
-  ["", "ティ", "ti"], ["", "ディ", "di"], ["", "トゥ", "tu"], ["", "ドゥ", "du"],
-  ["", "チェ", "che"], ["", "シェ", "she"], ["", "ジェ", "je"],
-  ["", "ヴ", "vu"],
+  // Combinations used for loanwords. Written in katakana in practice, but the
+  // hiragana forms are listed too: a reading that arrives in katakana gets
+  // folded to hiragana before it is romanised, and without these フォン came
+  // out "fuon" rather than "fon".
+  ["ゔぁ", "ヴァ", "va"], ["ゔぃ", "ヴィ", "vi"], ["ゔぇ", "ヴェ", "ve"], ["ゔぉ", "ヴォ", "vo"],
+  ["ふぁ", "ファ", "fa"], ["ふぃ", "フィ", "fi"], ["ふぇ", "フェ", "fe"], ["ふぉ", "フォ", "fo"],
+  ["うぃ", "ウィ", "wi"], ["うぇ", "ウェ", "we"], ["うぉ", "ウォ", "wo"],
+  ["てぃ", "ティ", "ti"], ["でぃ", "ディ", "di"], ["とぅ", "トゥ", "tu"], ["どぅ", "ドゥ", "du"],
+  ["ちぇ", "チェ", "che"], ["しぇ", "シェ", "she"], ["じぇ", "ジェ", "je"],
+  ["ゔ", "ヴ", "vu"],
 
   // Basic syllabary.
   ["あ", "ア", "a"], ["い", "イ", "i"], ["う", "ウ", "u"], ["え", "エ", "e"], ["お", "オ", "o"],
@@ -96,6 +99,8 @@ export function hasJapanese(text: string): boolean {
 
 /** Consonant a small tsu doubles, taken from the syllable that follows it. */
 function doubledConsonant(romaji: string): string {
+  // A small tsu with no syllable after it has nothing to double.
+  if (!romaji) return "";
   if (romaji.startsWith("ch")) return "t"; // Hepburn writes っち as "tchi".
   const first = romaji[0];
   return /[a-z]/.test(first) && !"aiueo".includes(first) ? first : "";
@@ -170,7 +175,16 @@ export function toKatakana(text: string): string {
   return [...text].map((char) => HIRAGANA_TO_KATAKANA.get(char) ?? char).join("");
 }
 export function toHiragana(text: string): string {
-  return [...text].map((char) => KATAKANA_TO_HIRAGANA.get(char) ?? char).join("");
+  return [...text]
+    .map((char) => {
+      const mapped = KATAKANA_TO_HIRAGANA.get(char);
+      if (mapped) return mapped;
+      // The two syllabary blocks are offset by 0x60, which covers characters
+      // the pair table does not list — ヴ becomes ゔ rather than staying katakana.
+      const code = char.charCodeAt(0);
+      return code >= 0x30a1 && code <= 0x30f6 ? String.fromCharCode(code - 0x60) : char;
+    })
+    .join("");
 }
 
 /** Romaji spellings an IME accepts, mapped to the kana they produce. */

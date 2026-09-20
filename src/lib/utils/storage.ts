@@ -27,6 +27,24 @@ export function writeLocal(key: string, value: unknown): void {
   }
 }
 
+/**
+ * Like `writeLocal`, but says whether the write actually happened.
+ *
+ * Most features are happy to lose a preference silently. One holding pictures
+ * is not: if the browser's quota is full the visitor needs to be told their
+ * work is no longer being kept, rather than finding out when they reload.
+ */
+export function tryWriteLocal(key: string, value: unknown): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    window.localStorage.setItem(PREFIX + key, JSON.stringify(value));
+    window.dispatchEvent(new CustomEvent("do101:storage", { detail: { key } }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function removeLocal(key: string): void {
   if (typeof window === "undefined") return;
   try {

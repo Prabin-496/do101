@@ -2,6 +2,11 @@ import { KANJI_MAP, WORDS, WORD_MAP, type KanjiEntry, type WordEntry } from "./d
 import {
   hasJapanese, isKana, isKanji, kanaToHepburn, kanaToRomaji, toHiragana, typingString,
 } from "./kana";
+import { matchNumeral } from "./numbers";
+import { readingSpans, type ReadingSpan } from "./tokenizer";
+import { stripRuby } from "./ruby";
+import { sanitize } from "./sanitize";
+import type { IpadicFeatures, Tokenizer } from "@sglkc/kuromoji";
 
 /**
  * Japanese lexical analysis.
@@ -27,6 +32,7 @@ import {
  */
 
 export type TokenSource =
+  | "analyser"
   | "word"
   | "inflected"
   | "compound"
@@ -66,6 +72,17 @@ export interface Analysis {
   unresolved: string[];
   /** True when every token has a reading and none of them was guessed. */
   complete: boolean;
+  /**
+   * The text the tokens were actually derived from: the raw input with
+   * annotation artifacts and inline furigana taken out.
+   *
+   * The caller keeps the raw input for display and never has to reconstruct
+   * what was analysed, which is what stops a rendered annotation from being
+   * fed back in on the next pass.
+   */
+  normalized: string;
+  /** Annotation artifacts removed before analysis, for the UI to report. */
+  removed: string[];
 }
 
 /** Shown in place of a character with no known reading. */
@@ -73,6 +90,7 @@ const UNRESOLVED_ROMAJI = "?";
 const UNRESOLVED_KANA = "？";
 
 const CONFIDENCE_BY_SOURCE: Record<TokenSource, Confidence> = {
+  analyser: "exact",
   word: "reliable",
   inflected: "reliable",
   compound: "approximate",
@@ -84,6 +102,7 @@ const CONFIDENCE_BY_SOURCE: Record<TokenSource, Confidence> = {
 };
 
 export const SOURCE_NOTES: Record<TokenSource, string> = {
+  analyser: "Segmented and read by the full-dictionary analyser. This is how the word is actually read here, in this sentence.",
   word: "A word from the bundled vocabulary — this reading is reliable.",
   inflected: "An inflected form of a word in the vocabulary. The stem reading is reliable.",
   compound: "A compound that is not in the vocabulary, read with the on'yomi of each kanji. Usually right, but compounds sometimes shift sound.",
@@ -113,6 +132,35 @@ for (const entry of WORDS) {
   }
 }
 ALL_WORD_KEYS.sort((a, b) => b.length - a.length);
+
+/**
+ * Words bucketed by first character, longest first within each bucket.
+ *
+ * The main loop asks "does a word start here?" at every position. Walking the
+ * whole list each time is quadratic in the length of the text — nine seconds
+ * on 80,000 characters — while a bucket lookup is proportional to the number
+ * of words sharing that first character, which is small.
+ */
+const WORDS_BY_FIRST = new Map<string, string[]>();
+for (const key of ALL_WORD_KEYS) {
+  const bucket = WORDS_BY_FIRST.get(key[0]);
+  if (bucket) bucket.push(key);
+  else WORDS_BY_FIRST.set(key[0], [key]);
+}
+
+/** Candidate words starting with this character, longest first. */
+function candidatesAt(char: string): string[] {
+  return WORDS_BY_FIRST.get(char) ?? [];
+}
+
+/** The longest vocabulary entry of at least `min` characters starting here. */
+function longestWordAt(text: string, index: number, min = 1): string | null {
+  for (const key of candidatesAt(text[index])) {
+    if (key.length < min) continue;
+    if (text.startsWith(key, index)) return key;
+  }
+  return null;
+}
 
 /**
  * Verb and adjective stems.
@@ -265,6 +313,55 @@ function joinCompoundReadings(left: string, right: string): string {
   return `${left.slice(0, -1)}っ${head}${right.slice(1)}`;
 }
 
+
+/* ------------------------------------------------------------------ */
+/* Rendaku (sequential voicing)                                        */
+/* ------------------------------------------------------------------ */
+
+/** The voicing a kana takes as the second element of a native compound. */
+const VOICED: Record<string, string> = {
+  か: "が", き: "ぎ", く: "ぐ", け: "げ", こ: "ご",
+  さ: "ざ", し: "じ", す: "ず", せ: "ぜ", そ: "ぞ",
+  た: "だ", ち: "ぢ", つ: "づ", て: "で", と: "ど",
+  は: "ば", ひ: "び", ふ: "ぶ", へ: "べ", ほ: "ぼ",
+};
+
+/** Kana that are already voiced obstruents, which block further voicing. */
+const ALREADY_VOICED = /[がぎぐげござじずぜぞだぢづでどばびぶべぼ]/;
+
+/**
+ * Applies sequential voicing to the second half of a native compound.
+ *
+ * 花 + 火 is はなび, not はなひ. The rule is blocked by Lyman's Law: an element
+ * that already contains a voiced obstruent does not take another, which is why
+ * 山風 stays やまかぜ rather than becoming やまがぜ.
+ */
+function rendaku(second: string): string {
+  if (!second) return second;
+  const head = VOICED[second[0]];
+  if (!head) return second;
+  if (ALREADY_VOICED.test(second)) return second;
+  return head + second.slice(1);
+}
+
+/** The iteration mark, which repeats the character before it. */
+const ITERATION_MARK = "々";
+
+/**
+ * Reads a repeated kanji written with 々.
+ *
+ * 人々 is ひとびと: the kun reading twice, with the second voiced. Reading it as
+ * a Sino compound would give じんじん, and leaving 々 alone put a character into
+ * the romaji line that no reader could pronounce.
+ */
+function readIteration(kanji: string): string | null {
+  const entry = KANJI_MAP.get(kanji);
+  if (!entry) return null;
+  const kun = entry.kun[0]?.replace(/[.\-–].*$/, "");
+  if (!kun) return null;
+  return kun + rendaku(kun);
+}
+
 /* ------------------------------------------------------------------ */
 /* Compound segmentation                                               */
 /* ------------------------------------------------------------------ */
@@ -331,6 +428,47 @@ function segmentKanjiRun(run: string, insideCompound: boolean): Segment[] {
  * 開発 should read "kaihatsu" as a unit rather than "kai hatsu" as two.
  */
 function tokensForRun(run: string): Token[] {
+  // A repetition pair is its own unit, read from the kun reading twice with
+  // the second voiced: 人々 is ひとびと, never じんじん.
+  const mark = run.indexOf(ITERATION_MARK);
+  if (mark > 0) {
+    const out: Token[] = [];
+    const base = run[mark - 1];
+    const before = run.slice(0, mark - 1);
+    const after = run.slice(mark + 1);
+    if (before) for (const token of tokensForRun(before)) out.push(token);
+
+    const repeated = readIteration(base);
+    if (repeated) {
+      out.push(
+        makeToken({
+          surface: base + ITERATION_MARK,
+          reading: repeated,
+          romaji: kanaToRomaji(repeated),
+          meaning: KANJI_MAP.get(base)?.meaning,
+          source: "word",
+        }),
+      );
+    } else {
+      // No kun reading to repeat, so read it as the doubled kanji it stands for.
+      for (const token of tokensForRun(base + base)) out.push(token);
+    }
+    if (after) for (const token of tokensForRun(after)) out.push(token);
+    return out;
+  }
+  // A leading 々 has nothing to repeat.
+  if (mark === 0) {
+    return [
+      makeToken({
+        surface: run[0],
+        reading: "",
+        romaji: UNRESOLVED_ROMAJI,
+        source: "unresolved",
+      }),
+      ...(run.length > 1 ? tokensForRun(run.slice(1)) : []),
+    ];
+  }
+
   const insideCompound = run.length > 1;
   const segments = segmentKanjiRun(run, insideCompound);
   const tokens: Token[] = [];
@@ -408,107 +546,76 @@ function tokensForRun(run: string): Token[] {
 
 
 /* ------------------------------------------------------------------ */
-/* Numbers and counters                                                */
-/* ------------------------------------------------------------------ */
-
-const DIGIT_KANA = ["ゼロ", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
-
-/** Magnitudes that join a numeral directly: 1億 is one word, ichioku. */
-const MAGNITUDES: Record<string, string> = {
-  十: "じゅう", 百: "ひゃく", 千: "せん", 万: "まん", 億: "おく", 兆: "ちょう",
-};
-
-/** Counters, which Hepburn hyphenates off the number: 1億円 is ichioku-en. */
-const COUNTERS: Record<string, string> = {
-  円: "えん", 人: "にん", 個: "こ", 時: "じ", 年: "ねん", 月: "がつ", 日: "にち",
-  回: "かい", 本: "ほん", 枚: "まい", 台: "だい", 匹: "ひき", 冊: "さつ",
-  歳: "さい", 才: "さい", 秒: "びょう", 杯: "はい", 軒: "けん", 番: "ばん",
-  階: "かい", 度: "ど", 名: "めい", 件: "けん", 部: "ぶ", 割: "わり",
-};
-
-/** Reads a run of digits as Japanese, up to four figures. */
-function digitsToKana(digits: string): string {
-  const normalised = digits.replace(/[０-９]/g, (d) => String(d.charCodeAt(0) - 0xff10));
-  const value = Number(normalised);
-  if (!Number.isFinite(value)) return "";
-  if (value === 0) return "ゼロ";
-  if (value < 10) return DIGIT_KANA[value];
-  // Above four figures the grouping rules differ enough that reading it here
-  // would be guesswork, so the digits are left as they are.
-  if (value > 9999) return "";
-
-  const irregularHundreds: Record<number, string> = { 3: "さんびゃく", 6: "ろっぴゃく", 8: "はっぴゃく" };
-  const irregularThousands: Record<number, string> = { 3: "さんぜん", 8: "はっせん" };
-
-  let out = "";
-  const thousands = Math.floor(value / 1000);
-  const hundreds = Math.floor((value % 1000) / 100);
-  const tens = Math.floor((value % 100) / 10);
-  const ones = value % 10;
-
-  if (thousands) {
-    out += irregularThousands[thousands] ?? (thousands === 1 ? "せん" : `${DIGIT_KANA[thousands]}せん`);
-  }
-  if (hundreds) {
-    out += irregularHundreds[hundreds] ?? (hundreds === 1 ? "ひゃく" : `${DIGIT_KANA[hundreds]}ひゃく`);
-  }
-  if (tens) out += tens === 1 ? "じゅう" : `${DIGIT_KANA[tens]}じゅう`;
-  if (ones) out += DIGIT_KANA[ones];
-  return out;
-}
-
-interface NumeralMatch {
-  surface: string;
-  reading: string;
-  romaji: string;
-  meaning?: string;
-}
-
-/**
- * Reads a numeral written in digits together with the kanji that follow it.
- *
- * Magnitudes join the number, counters are hyphenated off it, which is what
- * Hepburn does: 1億円 is ichioku-en.
- */
-function matchNumeral(text: string, index: number): NumeralMatch | null {
-  const digits = /^[0-9０-９]+/.exec(text.slice(index))?.[0];
-  if (!digits) return null;
-
-  let cursor = index + digits.length;
-  let magnitudeKana = "";
-  let magnitudeSurface = "";
-  while (cursor < text.length && MAGNITUDES[text[cursor]]) {
-    magnitudeKana += MAGNITUDES[text[cursor]];
-    magnitudeSurface += text[cursor];
-    cursor += 1;
-  }
-
-  const counterChar = cursor < text.length ? text[cursor] : "";
-  const counterKana = COUNTERS[counterChar] ?? "";
-  if (counterKana) cursor += 1;
-
-  // Bare digits with nothing attached are left to the passthrough branch.
-  if (!magnitudeSurface && !counterKana) return null;
-
-  const numberKana = digitsToKana(digits);
-  if (!numberKana) return null;
-
-  const head = numberKana + magnitudeKana;
-  return {
-    surface: text.slice(index, cursor),
-    reading: head + counterKana,
-    romaji: counterKana
-      ? `${kanaToHepburn(head)}-${kanaToHepburn(counterKana)}`
-      : kanaToHepburn(head),
-    meaning: counterKana ? KANJI_MAP.get(counterChar)?.meaning : undefined,
-  };
-}
-
-/* ------------------------------------------------------------------ */
 /* Main pass                                                           */
 /* ------------------------------------------------------------------ */
 
-export function analyse(text: string): Analysis {
+export interface AnalyseOptions {
+  /**
+   * The morphological analyser, when it has loaded. This is the primary path:
+   * it segments the sentence into words and gives each one the reading it
+   * actually takes there.
+   */
+  tokenizer?: Tokenizer<IpadicFeatures> | null;
+  /** Pre-computed spans, for callers that already tokenised. Tests, mainly. */
+  readings?: Map<number, ReadingSpan>;
+}
+
+/**
+ * Reads Japanese.
+ *
+ * The order matters more than anything else here, and getting it wrong is what
+ * produced every reading complaint about this tool:
+ *
+ *   1. Inline ruby — 難（むずか）しさ — is taken out first and kept as a
+ *      reading. Left in, it splits the word so nothing downstream can see
+ *      難しさ, and the kana gets romanised a second time as "muzuka（muzuka）shi".
+ *   2. The morphological analyser segments what is left into whole words and
+ *      supplies each one's reading. 在宅勤務 is one word read ざいたくきんむ.
+ *   3. Only where that is unavailable do the character-level rules below run.
+ *
+ * Step 3 used to be the whole pipeline, and it cannot work. A kanji's reading
+ * depends on the word it sits in, so reading characters one at a time and
+ * joining the results gives 従業員 → "gyōin", 困難 → "muzuka", 発生 →
+ * "ta ushitako". No amount of extra vocabulary fixes that, because the fault is
+ * the order of resolution, not the size of the dictionary. It survives only as
+ * a fallback for the moment before the analyser has loaded, and it is reported
+ * as approximate when it runs.
+ */
+export function analyse(text: string, options: AnalyseOptions = {}): Analysis {
+  // The pipeline runs one way only, and these two steps are the gate:
+  //
+  //   raw input -> sanitize -> ruby -> token analysis -> hiragana -> romaji
+  //
+  // Nothing produced further down ever comes back in. Annotation artifacts —
+  // a romaji gloss in brackets, a footnote number, a stray asterisk — are
+  // stripped here, because analysing them is what produced output like
+  // "zaitaku kinmu（zaitakukinmu）": the word read properly, then its own
+  // annotation read a second time beside it.
+  const cleaned = sanitize(text);
+  const ruby = stripRuby(cleaned.text);
+  const spans = options.readings ?? readingSpans(ruby.text, options.tokenizer ?? null);
+
+  // The author's own readings fill whatever the analyser could not name. Where
+  // the analyser did produce a span it wins, because it read the whole word
+  // and the annotation only covers the kanji in front of the brackets.
+  if (ruby.found) {
+    const covered = new Set<number>();
+    for (const [at, span] of spans) {
+      for (let i = 0; i < span.surface.length; i += 1) covered.add(at + i);
+    }
+    for (const [at, reading] of ruby.readings) {
+      if (!covered.has(at)) spans.set(at, { ...reading, particle: false });
+    }
+  }
+
+  const analysis = analyseText(ruby.text, spans);
+  analysis.normalized = ruby.text;
+  analysis.removed = cleaned.removed;
+  return analysis;
+}
+
+function analyseText(text: string, readings: Map<number, ReadingSpan>): Analysis {
+  const options: AnalyseOptions = { readings };
   const tokens: Token[] = [];
   let index = 0;
 
@@ -520,6 +627,17 @@ export function analyse(text: string): Analysis {
         makeToken({ surface: char, reading: char, romaji: char, source: "other", kanji: [] }),
       );
       index += 1;
+      continue;
+    }
+
+    // 0. The analyser, when it has been loaded and knows this position. It
+    //    outranks every rule below, having chosen this reading with the whole
+    //    sentence in view, but not the punctuation test above: that is a
+    //    character class, and cheaper to trust than a dictionary.
+    const span = options.readings?.get(index);
+    if (span && text.startsWith(span.surface, index) && span.reading) {
+      tokens.push(analyserToken(span));
+      index += span.surface.length;
       continue;
     }
 
@@ -550,8 +668,8 @@ export function analyse(text: string): Analysis {
     // 1. Vocabulary, longest match first. This runs before anything
     //    character-level, which is what keeps 日本人 from becoming 日 + 本 + 人.
     let matched = false;
-    for (const key of ALL_WORD_KEYS) {
-      if (key.length < 2 || !text.startsWith(key, index)) continue;
+    const multiCharWord = longestWordAt(text, index, 2);
+    for (const key of multiCharWord ? [multiCharWord] : []) {
       const entry = WORD_MAP.get(key)!;
       tokens.push(
         makeToken({
@@ -571,11 +689,35 @@ export function analyse(text: string): Analysis {
     }
     if (matched) continue;
 
+    // A numeral — in digits or kanji — together with any counter attached to
+    // it. Counters are irregular enough that this cannot be left to the
+    // compound reader.
+    const numeral = matchNumeral(text, index);
+    if (numeral) {
+      tokens.push(
+        makeToken({
+          surface: numeral.surface,
+          reading: numeral.kana,
+          romaji: numeral.romaji,
+          meaning: numeral.meaning,
+          source: "word",
+        }),
+      );
+      index += numeral.surface.length;
+      continue;
+    }
+
     if (isKanji(char)) {
       let run = "";
-      while (index + run.length < text.length && isKanji(text[index + run.length])) {
+      while (
+        index + run.length < text.length &&
+        (isKanji(text[index + run.length]) ||
+          // 々 belongs to the run it repeats, not to whatever follows.
+          (text[index + run.length] === ITERATION_MARK && run.length > 0))
+      ) {
         run += text[index + run.length];
       }
+
 
       // 2. An inflected verb or adjective: a known stem plus its okurigana.
       const stemReading = STEMS.get(run);
@@ -604,7 +746,7 @@ export function analyse(text: string): Analysis {
         const tailStem = STEMS.get(tail);
         const tailEnding = tailStem ? okurigana(text, index + run.length) : "";
         if (tailStem && tailEnding) {
-          tokens.push(...tokensForRun(run.slice(0, -1)));
+          for (const token of tokensForRun(run.slice(0, -1))) tokens.push(token);
           const surface = tail + tailEnding;
           const reading = tailStem + tailEnding;
           tokens.push(
@@ -622,15 +764,16 @@ export function analyse(text: string): Analysis {
       }
 
       // 3. Compound segmentation, then per-character readings for the rest.
-      tokens.push(...tokensForRun(run));
+      // push(...arr) exceeds the argument limit on a very long run, so the
+      // tokens are appended one at a time.
+      for (const token of tokensForRun(run)) tokens.push(token);
       index += run.length;
       continue;
     }
 
     // 4. Single-character vocabulary, after stems so that 分かりません is not
     //    read as 分 ("fun") followed by かりません.
-    for (const key of ALL_WORD_KEYS) {
-      if (key.length !== 1 || !text.startsWith(key, index)) continue;
+    for (const key of WORD_MAP.has(char) ? [char] : []) {
       const entry = WORD_MAP.get(key)!;
       tokens.push(
         makeToken({
@@ -665,22 +808,6 @@ export function analyse(text: string): Analysis {
       continue;
     }
 
-    // A numeral written in digits, with its magnitude and counter attached.
-    const numeral = matchNumeral(text, index);
-    if (numeral) {
-      tokens.push(
-        makeToken({
-          surface: numeral.surface,
-          reading: numeral.reading,
-          romaji: numeral.romaji,
-          meaning: numeral.meaning,
-          source: "word",
-        }),
-      );
-      index += numeral.surface.length;
-      continue;
-    }
-
     // Latin letters, digits and anything else pass through untouched.
     let run = "";
     while (
@@ -696,6 +823,74 @@ export function analyse(text: string): Analysis {
   }
 
   return summarise(tokens);
+}
+
+/**
+ * A token from a reading the analyser supplied.
+ *
+ * Particles keep the existing treatment: IPADIC reads は as ハ, which is the
+ * character's name rather than its sound in that role, and romanising it "ha"
+ * is exactly the mistake this tool exists to prevent.
+ *
+ * Meanings still come from the bundled vocabulary — IPADIC carries no English
+ * — so a word outside it gets a correct reading and no gloss, which is the
+ * right way round.
+ */
+function analyserToken(span: ReadingSpan): Token {
+  const { surface, reading } = span;
+
+  if (span.particle && surface.length === 1 && IRREGULAR_PARTICLES[surface]) {
+    return makeToken({
+      surface,
+      reading: surface,
+      romaji: IRREGULAR_PARTICLES[surface],
+      meaning: PARTICLE_NOTES[surface],
+      source: "particle",
+      kanji: [],
+    });
+  }
+
+  return makeToken({
+    surface,
+    reading,
+    // Macrons belong to a word read as one unit, which is what this is.
+    romaji: [...surface].some(isKanji) ? kanaToHepburn(reading) : kanaToRomaji(reading),
+    meaning: WORD_MAP.get(surface)?.meaning,
+    source: "analyser",
+  });
+}
+
+/**
+ * Whether a space belongs beside this token in the romaji line.
+ *
+ * Punctuation must stay attached to the word before it, but a Latin word in
+ * the middle of Japanese is a word and needs its own space: 公式note で is
+ * "kōshiki note de", not "kōshikinotede". Both arrive here as "other", so the
+ * source alone cannot tell them apart.
+ */
+function isWordlike(token: Token): boolean {
+  return token.source !== "other" || /^[\p{L}\p{N}]+$/u.test(token.surface);
+}
+
+/**
+ * The romaji for one token, guaranteed to contain no Japanese.
+ *
+ * The romaji line is the whole reason someone opens this tool: they cannot read
+ * the kanji, so a kanji printed inside the romaji is worse than useless. This
+ * used to be possible two ways — a token whose romaji came out empty fell back
+ * to printing its own surface, and a reading that itself still held a kanji was
+ * passed through by the kana converter untouched.
+ *
+ * A token that cannot be read contributes nothing to the line. Not the kanji,
+ * and not a "?" either: a question mark in the middle of a romanisation reads
+ * as part of the sentence. What could not be read is reported through
+ * `Analysis.unresolved` and marked on its own word-by-word card, which is where
+ * a reader can act on it.
+ */
+function romajiFor(token: Token): string {
+  if (token.source === "unresolved") return "";
+  const value = token.romaji || token.surface;
+  return hasJapanese(value) ? "" : value;
 }
 
 function summarise(tokens: Token[]): Analysis {
@@ -731,20 +926,25 @@ function summarise(tokens: Token[]): Analysis {
   // legible; punctuation must not be pushed away from the word before it.
   const romaji = tokens
     .map((token, i) => {
-      const value = token.source === "unresolved" ? UNRESOLVED_ROMAJI : token.romaji || token.surface;
+      const value = romajiFor(token);
       const next = tokens[i + 1];
-      const spaced = next && token.source !== "other" && next.source !== "other";
+      const spaced = next && isWordlike(token) && isWordlike(next);
       return spaced ? `${value} ` : value;
     })
     .join("")
     .replace(/ +([,.!?、。）)\]])/g, "$1")
+    // A token that could not be read contributes nothing, which can leave the
+    // spaces that were meant to sit either side of it.
+    .replace(/ {2,}/g, " ")
     .trim();
 
   const typing = tokens
-    .map((t) => (t.source === "other" ? t.surface : t.typing || UNRESOLVED_ROMAJI))
+    .map((t) => (t.source === "other" ? t.surface : t.typing))
     .join("");
 
   return {
+    normalized: "",
+    removed: [],
     tokens,
     hiragana,
     katakana,
@@ -774,13 +974,13 @@ function toKatakanaLocal(text: string): string {
  * Lines are independent: nothing from one carries into the next, so a stray
  * fragment on line three cannot change how line one is read or translated.
  */
-export function analyseLines(text: string): Analysis[] {
-  return text.split("\n").map((line) => analyse(line));
+export function analyseLines(text: string, options: AnalyseOptions = {}): Analysis[] {
+  return text.split("\n").map((line) => analyse(line, options));
 }
 
 /** Every kanji in the text that the bundled list knows about. */
-export function kanjiIn(text: string): KanjiEntry[] {
-  return analyse(text).kanji;
+export function kanjiIn(text: string, options: AnalyseOptions = {}): KanjiEntry[] {
+  return analyse(text, options).kanji;
 }
 
 export { hasJapanese };

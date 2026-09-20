@@ -12,6 +12,8 @@
  * the reader always knows which readings are reliable.
  */
 
+import { EXTRA_KANJI } from "./kanji-readings";
+
 export interface WordEntry {
   /** As written, usually with kanji. */
   word: string;
@@ -1088,6 +1090,14 @@ export const KANJI: KanjiEntry[] = [
   { kanji: "八", on: ["ハチ"], kun: ["や"], meaning: "eight" },
   { kanji: "九", on: ["キュウ", "ク"], kun: ["ここの"], meaning: "nine" },
   { kanji: "十", on: ["ジュウ"], kun: ["とお"], meaning: "ten" },
+  { kanji: "神", on: ["シン", "ジン"], kun: ["かみ"], meaning: "god, spirit" },
+  { kanji: "様", on: ["ヨウ"], kun: ["さま"], meaning: "manner, honorific" },
+  { kanji: "所", on: ["ショ"], kun: ["ところ"], meaning: "place" },
+  { kanji: "色", on: ["ショク", "シキ"], kun: ["いろ"], meaning: "colour" },
+  { kanji: "袋", on: ["タイ"], kun: ["ふくろ"], meaning: "bag" },
+  { kanji: "靴", on: ["カ"], kun: ["くつ"], meaning: "shoes" },
+  { kanji: "屋", on: ["オク"], kun: ["や"], meaning: "shop, roof" },
+
   { kanji: "氏", on: ["シ"], kun: ["うじ"], meaning: "family name, Mr" },
   { kanji: "信", on: ["シン"], kun: [], meaning: "trust, believe" },
   { kanji: "億", on: ["オク"], kun: [], meaning: "hundred million" },
@@ -1187,11 +1197,9 @@ export const KANJI: KanjiEntry[] = [
   { kanji: "履", on: ["リ"], kun: ["は"], meaning: "wear on feet,履歴" },
   { kanji: "歴", on: ["レキ"], kun: [], meaning: "history, curriculum" },
   { kanji: "帽", on: ["ボウ"], kun: [], meaning: "hat" },
-  { kanji: "靴", on: ["カ"], kun: ["くつ"], meaning: "shoes" },
   { kanji: "傘", on: ["サン"], kun: ["かさ"], meaning: "umbrella" },
   { kanji: "鍵", on: ["ケン"], kun: ["かぎ"], meaning: "key" },
   { kanji: "財", on: ["ザイ"], kun: [], meaning: "wealth, property" },
-  { kanji: "袋", on: ["タイ"], kun: ["ふくろ"], meaning: "bag" },
   { kanji: "箱", on: ["ソウ"], kun: ["はこ"], meaning: "box" },
   { kanji: "枚", on: ["マイ"], kun: [], meaning: "counter for flat things" },
   { kanji: "冊", on: ["サツ"], kun: [], meaning: "counter for books" },
@@ -1552,7 +1560,6 @@ export const KANJI: KanjiEntry[] = [
   { kanji: "動", on: ["ドウ"], kun: ["うご"], meaning: "move" },
   { kanji: "料", on: ["リョウ"], kun: [], meaning: "fee, materials" },
   { kanji: "品", on: ["ヒン"], kun: ["しな"], meaning: "goods, article" },
-  { kanji: "屋", on: ["オク"], kun: ["や"], meaning: "shop, roof" },
   { kanji: "室", on: ["シツ"], kun: ["むろ"], meaning: "room" },
   { kanji: "館", on: ["カン"], kun: [], meaning: "building, hall" },
   { kanji: "園", on: ["エン"], kun: ["その"], meaning: "garden, park" },
@@ -1585,7 +1592,6 @@ export const KANJI: KanjiEntry[] = [
   { kanji: "活", on: ["カツ"], kun: [], meaning: "lively, activity" },
   { kanji: "健", on: ["ケン"], kun: ["すこ"], meaning: "healthy" },
   { kanji: "族", on: ["ゾク"], kun: [], meaning: "tribe, family" },
-  { kanji: "様", on: ["ヨウ"], kun: ["さま"], meaning: "manner, honorific" },
   { kanji: "野", on: ["ヤ"], kun: ["の"], meaning: "field, plain" },
   { kanji: "菜", on: ["サイ"], kun: ["な"], meaning: "vegetable" },
   { kanji: "牛", on: ["ギュウ"], kun: ["うし"], meaning: "cow" },
@@ -1601,7 +1607,19 @@ for (const entry of WORDS) {
 }
 export const WORD_KEYS = [...WORD_MAP.keys()].sort((a, b) => b.length - a.length);
 
+/**
+ * Every kanji the reading tools can read.
+ *
+ * The generated jouyou/jinmeiyou set goes in first and the curated entries
+ * above overwrite it, so a kanji a learner is likely to meet keeps the meaning
+ * written for them rather than a dictionary gloss, and everything else still
+ * has a reading. Before this, a kanji outside the curated few hundred was
+ * printed as "?" — which is what readers actually noticed.
+ */
 export const KANJI_MAP = new Map<string, KanjiEntry>();
+for (const entry of EXTRA_KANJI) {
+  KANJI_MAP.set(entry.kanji, entry);
+}
 for (const entry of KANJI) {
   if (entry.meaning) KANJI_MAP.set(entry.kanji, entry);
 }

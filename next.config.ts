@@ -21,7 +21,18 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   async headers() {
     // Next.js already sets immutable caching for its own static output.
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      {
+        // The kuromoji dictionary is 17MB across 12 files, and a reader who
+        // asks for accurate Japanese readings should pay for it once rather
+        // than revalidating twelve times on every visit. IPADIC is a frozen
+        // corpus, so the content behind these URLs does not change; if the
+        // package is ever upgraded, the path has to change with it.
+        source: "/kuromoji/dict/:file*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+    ];
   },
 };
 

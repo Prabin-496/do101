@@ -16,6 +16,7 @@ import {
   TranslationError, cached, describeMatch, translateEachLine,
   type Direction, type LineTranslation,
 } from "@/lib/japanese/translate";
+import { useTokenizer } from "@/lib/japanese/use-tokenizer";
 import { useIsHydrated } from "@/lib/utils/use-local";
 import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils/cn";
@@ -24,6 +25,7 @@ import { cn } from "@/lib/utils/cn";
 const DEBOUNCE_MS = 700;
 
 const SOURCE_UNDERLINE: Record<Token["source"], string> = {
+  analyser: "border-[var(--grass)]",
   word: "border-[var(--grass)]",
   inflected: "border-[var(--grass)]",
   compound: "border-dashed border-[var(--fire)]",
@@ -43,6 +45,8 @@ interface Segment {
   match: number;
   /** Set when the plain-form translation was rewritten into polite form. */
   politeFrom?: string;
+  /** Set when the service had no translation and returned the input unchanged. */
+  untranslated?: boolean;
 }
 
 /**
@@ -93,7 +97,7 @@ function TokenColumn({
       >
         {token.surface}
       </span>
-      <span className="mt-1 text-xs font-bold lowercase leading-none text-[var(--sky-dark)] dark:text-[var(--sky)]">
+      <span className="mt-1 text-xs font-bold leading-none text-[var(--sky-dark)] dark:text-[var(--sky)]">
         {token.romaji || "?"}
       </span>
       <span className="mt-1 max-w-[9rem] truncate text-[10px] font-semibold leading-none text-[var(--muted)]">
@@ -116,7 +120,7 @@ function KanjiCard({ entry }: { entry: KanjiEntry }) {
             <p className="mt-1 text-xs font-bold text-[var(--muted)]">
               <span className="text-[var(--grape-dark)] dark:text-[var(--grape)]">On</span>{" "}
               <span lang="ja">{entry.on.join("、")}</span>
-              <span className="ml-1 lowercase">
+              <span className="ml-1">
                 ({entry.on.map((reading) => typingString(reading)).join(", ")})
               </span>
             </p>
@@ -125,14 +129,14 @@ function KanjiCard({ entry }: { entry: KanjiEntry }) {
             <p className="text-xs font-bold text-[var(--muted)]">
               <span className="text-[var(--grass-dark)] dark:text-[var(--grass)]">Kun</span>{" "}
               <span lang="ja">{entry.kun.join("、")}</span>
-              <span className="ml-1 lowercase">
+              <span className="ml-1">
                 ({entry.kun.map((reading) => typingString(reading)).join(", ")})
               </span>
             </p>
           ) : null}
           {kun ? (
             <p className="mt-1.5 text-[11px] font-bold">
-              <span className="rounded bg-[var(--panel)] px-1.5 py-0.5 font-mono lowercase">
+              <span className="rounded bg-[var(--panel)] px-1.5 py-0.5 font-mono">
                 {typingString(kun)}
               </span>{" "}
               <span className="text-[var(--muted)]">then space to convert</span>
@@ -159,6 +163,8 @@ export function JapaneseTranslator() {
   // is the default, with the original one click away.
   const [preferPolite, setPreferPolite] = React.useState(true);
 
+  const tokenizer = useTokenizer();
+  const analyser = tokenizer.instance;
   const hydrated = useIsHydrated();
   const reported = React.useRef(false);
 
@@ -228,7 +234,7 @@ export function JapaneseTranslator() {
           source: line,
           translated: translated?.result?.text ?? "",
           japanese: line,
-          analysis: analyse(line),
+          analysis: analyse(line, { tokenizer: analyser }),
           match: translated?.result?.match ?? 0,
         };
       });
@@ -246,14 +252,35 @@ export function JapaneseTranslator() {
         source: line.source,
         translated: japanese,
         japanese,
-        analysis: analyse(japanese),
+        analysis: analyse(japanese, { tokenizer: analyser }),
         match: line.result?.match ?? 0,
         politeFrom: rewritten ? raw : undefined,
+        untranslated: line.result?.untranslated,
       };
     });
-  }, [direction, input, payload, preferPolite]);
+  }, [direction, input, payload, preferPolite, analyser]);
 
   const filled = segments.filter((s) => s.japanese.trim());
+
+  /**
+   * How much of the reading below is guesswork.
+   *
+   * The bundled vocabulary is a learner's core, so ordinary business Japanese
+   * runs straight past it: characters it has never seen show as "?", and
+   * compounds it cannot segment are read one kanji at a time, which is how
+   * 浅野 becomes "sen'ya". Counting both is what justifies asking the reader to
+   * download 17MB — the offer only appears when it would actually change
+   * something on screen.
+   */
+  const guesswork = React.useMemo(() => {
+    let unresolved = 0;
+    let approximate = 0;
+    for (const segment of filled) {
+      unresolved += segment.analysis.unresolved.length;
+      approximate += segment.analysis.tokens.filter((t) => t.confidence === "approximate").length;
+    }
+    return { unresolved, approximate, total: unresolved + approximate };
+  }, [filled]);
   const allKanji = React.useMemo(() => {
     const seen = new Set<string>();
     const out: KanjiEntry[] = [];
@@ -357,7 +384,7 @@ export function JapaneseTranslator() {
             className="do-scroll min-h-[150px] w-full resize-y bg-transparent p-4 text-xl font-extrabold leading-relaxed outline-none placeholder:text-base placeholder:font-semibold placeholder:text-[var(--muted)]"
           />
           {direction === "ja-en" && wholeRomaji ? (
-            <p className="whitespace-pre-wrap border-t-2 border-[var(--border)] px-4 py-2.5 text-sm font-bold lowercase text-[var(--muted)]">
+            <p className="whitespace-pre-wrap border-t-2 border-[var(--border)] px-4 py-2.5 text-sm font-bold text-[var(--muted)]">
               {wholeRomaji}
             </p>
           ) : null}
@@ -385,8 +412,20 @@ export function JapaneseTranslator() {
                   </p>
                   {/* Romaji directly beneath its own line, as Google Translate shows it. */}
                   {direction === "en-ja" && segment.analysis.romaji ? (
-                    <p className="mt-1 text-sm font-bold lowercase text-[var(--muted)]">
+                    <p className="mt-1 text-sm font-bold text-[var(--muted)]">
                       {segment.analysis.romaji}
+                    </p>
+                  ) : null}
+                  {/*
+                    The service returns the input unchanged for words it has no
+                    entry for. Without this the reader sees English sitting
+                    where the Japanese should be and has no way to tell that
+                    nothing was translated.
+                  */}
+                  {segment.untranslated ? (
+                    <p className="mt-1 text-xs font-bold text-[var(--muted)]">
+                      Not translated — the service has no Japanese for this. Try it in a full
+                      sentence, which it usually can translate.
                     </p>
                   ) : null}
                 </div>
@@ -517,6 +556,54 @@ export function JapaneseTranslator() {
             </p>
           </div>
 
+          {tokenizer.status === "ready" ? (
+            <p className="mt-2 text-xs font-bold text-[var(--muted)]">
+              ✓ Full dictionary loaded — these readings are the ones the words take here.
+            </p>
+          ) : tokenizer.status === "loading" ? (
+            <p role="status" className="mt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--muted)]">
+              <span className="size-2 animate-pulse rounded-full bg-[var(--sky)]" aria-hidden />
+              Loading the full dictionary — about 17MB, once. The readings below update when it lands.
+            </p>
+          ) : tokenizer.status === "failed" ? (
+            <p
+              role="status"
+              className="mt-2 flex flex-wrap items-center gap-2 rounded-2xl border-2 border-[var(--cherry)] bg-[var(--cherry-soft)] px-3 py-2 text-xs font-bold"
+            >
+              <span aria-hidden>⚠️</span>
+              The full dictionary could not be loaded. The readings below are the built-in
+              approximations.
+              <button type="button" onClick={tokenizer.load} className="underline underline-offset-2">
+                Try again
+              </button>
+            </p>
+          ) : guesswork.total > 0 ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-2xl border-2 border-[var(--sun)] bg-[var(--sun-soft)] px-3 py-2">
+              <p className="flex-1 text-xs font-bold">
+                {guesswork.approximate > 0 ? (
+                  <>
+                    {guesswork.approximate} reading{guesswork.approximate === 1 ? " is" : "s are"}{" "}
+                    worked out one kanji at a time, because the word itself is not in the built-in
+                    vocabulary. That is often wrong for a compound — it reads 浅野 as “sen’ya”
+                    rather than “asano”.{" "}
+                  </>
+                ) : null}
+                {guesswork.unresolved > 0 ? (
+                  <>
+                    {guesswork.unresolved} character{guesswork.unresolved === 1 ? "" : "s"} here
+                    {guesswork.unresolved === 1 ? " has" : " have"} no reading at all and show as
+                    “?”.{" "}
+                  </>
+                ) : null}
+                The full dictionary works out where words begin and end, so it reads them the way
+                they are actually read here. It is a 17MB download, once, kept by your browser.
+              </p>
+              <Button size="sm" tone="grass" onClick={tokenizer.load}>
+                Load full dictionary
+              </Button>
+            </div>
+          ) : null}
+
           {filled.map((segment, lineIndex) => (
             <div key={lineIndex} className={cn(lineIndex > 0 && "mt-4 border-t-2 border-[var(--border)] pt-4")}>
               <div className="do-scroll flex flex-wrap items-end gap-1 overflow-x-auto pb-1">
@@ -545,7 +632,7 @@ export function JapaneseTranslator() {
                   </span>
                 ) : null}
               </p>
-              <p className="mt-0.5 text-sm font-bold lowercase text-[var(--sky-dark)] dark:text-[var(--sky)]">
+              <p className="mt-0.5 text-sm font-bold text-[var(--sky-dark)] dark:text-[var(--sky)]">
                 {selectedToken.romaji}
               </p>
               {selectedToken.meaning ? (
@@ -558,7 +645,7 @@ export function JapaneseTranslator() {
               {selectedToken.typing ? (
                 <p className="mt-3 text-sm font-bold">
                   <span className="text-[var(--muted)]">Type </span>
-                  <span className="rounded-lg border-2 border-[var(--border-strong)] bg-[var(--bg)] px-2 py-1 font-mono lowercase">
+                  <span className="rounded-lg border-2 border-[var(--border-strong)] bg-[var(--bg)] px-2 py-1 font-mono">
                     {selectedToken.typing}
                   </span>
                   {selectedToken.needsConversion ? (
@@ -615,7 +702,6 @@ export function JapaneseTranslator() {
               <p
                 className={cn(
                   "mt-1 whitespace-pre-wrap break-words text-lg font-extrabold",
-                  label === "Romaji" && "lowercase",
                 )}
                 lang={lang}
               >
@@ -653,7 +739,7 @@ export function JapaneseTranslator() {
             <p className="text-sm font-extrabold">How to type it</p>
             <CopyButton value={wholeTyping} label="Copy keystrokes" />
           </div>
-          <p className="mt-2 whitespace-pre-wrap break-words rounded-2xl bg-[var(--panel)] px-4 py-3 font-mono text-base font-bold lowercase">
+          <p className="mt-2 whitespace-pre-wrap break-words rounded-2xl bg-[var(--panel)] px-4 py-3 font-mono text-base font-bold">
             {wholeTyping}
           </p>
           <p className="mt-3 text-sm font-semibold text-[var(--muted)]">
@@ -688,6 +774,33 @@ export function JapaneseTranslator() {
         romaji, kanji breakdown and typing guide all run on your device and keep working if that
         service is unavailable.
       </InfoNote>
+
+      {/*
+        Both datasets are redistributed by this page, and both licences require
+        the credit, so it is stated rather than buried in a repository file.
+      */}
+      <p className="text-xs font-semibold text-[var(--muted)]">
+        Kanji readings from{" "}
+        <a
+          href="https://www.edrdg.org/wiki/index.php/KANJIDIC_Project"
+          className="underline underline-offset-2"
+          rel="noreferrer noopener"
+          target="_blank"
+        >
+          KANJIDIC2
+        </a>
+        , © Electronic Dictionary Research and Development Group, used under CC BY-SA 4.0. Word
+        segmentation by{" "}
+        <a
+          href="https://github.com/takuyaa/kuromoji.js"
+          className="underline underline-offset-2"
+          rel="noreferrer noopener"
+          target="_blank"
+        >
+          kuromoji.js
+        </a>{" "}
+        with the IPADIC dictionary, Apache License 2.0.
+      </p>
     </div>
   );
 }

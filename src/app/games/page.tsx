@@ -14,10 +14,16 @@ const games = toolsByCategory("game");
 /** Grouped by what each one actually measures, rather than one long list. */
 const GROUPS = [
   {
+    title: "Play with friends",
+    icon: "👥",
+    blurb: "Share a code and play together, live, from wherever you are.",
+    ids: ["darts", "typing-battle"],
+  },
+  {
     title: "Speed and reflexes",
     icon: "⚡",
     blurb: "How fast can you react, click and aim?",
-    ids: ["reaction-test", "aim-trainer", "click-speed-test", "typing-test", "typing-battle"],
+    ids: ["reaction-test", "aim-trainer", "click-speed-test", "typing-test"],
   },
   {
     title: "Memory",
@@ -40,9 +46,9 @@ const GROUPS = [
 ];
 
 export const metadata: Metadata = buildMetadata({
-  title: "14 Free Browser Games — Typing, Memory & Reflex | DO101",
+  title: "15 Free Browser Games — Darts, Typing, Memory & Reflex | DO101",
   description:
-    "14 free browser games: typing speed test, 1v1 typing battle, reaction time, aim trainer, click speed, memory tests, Stroop test, maths sprint and 2048. No sign-up.",
+    "15 free browser games: multiplayer 301 darts, typing speed test, 1v1 typing battle, reaction time, aim trainer, click speed, memory tests, Stroop test, maths sprint and 2048. No sign-up.",
   path: "/games",
 });
 
@@ -70,33 +76,34 @@ export default function GamesPage() {
           Games <span aria-hidden>🎮</span>
         </h1>
         <p className="mt-2 max-w-2xl text-base font-semibold text-[var(--muted)]">
-          Fourteen quick browser games that measure something real: how fast you type, how quickly
-          you react, how sharp your eyes are and how much you can hold in your head. Every best
-          score is saved on your own device — no account, no leaderboard full of strangers.
+          Fifteen quick browser games. Most measure something real — how fast you type, how
+          quickly you react, how much you can hold in your head — and two of them you play against
+          your friends live, by sharing a code. Every best score is saved on your own device, with
+          no account and no leaderboard full of strangers.
         </p>
       </header>
 
       <section className="mb-10">
         <Link
-          href="/games/typing-battle"
+          href="/games/darts"
           className="do-card do-card-hover block overflow-hidden bg-[var(--cherry-soft)]"
         >
           <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:p-8">
             <span aria-hidden className="do-bob text-6xl">
-              ⚔️
+              🎯
             </span>
             <div className="flex-1">
               <p className="text-xs font-extrabold uppercase tracking-widest text-[var(--muted)]">
                 Flagship
               </p>
-              <h2 className="text-2xl sm:text-3xl">Typing Battle</h2>
+              <h2 className="text-2xl sm:text-3xl">Darts 301</h2>
               <p className="mt-2 text-base font-semibold text-[var(--muted)]">
-                Share a link, race the same text, watch both progress bars move in real time. A
-                genuine peer-to-peer connection — never a simulated opponent.
+                Up to five players on one board. Share a room code, throw from your own phone, and
+                watch every score, bust and checkout land live.
               </p>
             </div>
             <span className="do-btn [--btn-bg:var(--cherry)] [--btn-shadow:var(--cherry-dark)] [--btn-fg:#fff] shrink-0 px-6 py-3 text-sm">
-              Start a race
+              Start a game
             </span>
           </div>
         </Link>
@@ -123,13 +130,14 @@ export default function GamesPage() {
       <AdSlot slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_GAMES} className="mt-10" />
 
       <section className="mt-14 max-w-3xl space-y-4 text-base font-semibold leading-relaxed text-[var(--muted)]">
-        <h2 className="text-2xl text-[var(--ink)]">Why these four games?</h2>
+        <h2 className="text-2xl text-[var(--ink)]">Why these games?</h2>
         <p>
-          Each one measures a real, repeatable thing, finishes in under a minute, and works the same
-          on a phone as on a laptop. The typing test gives you a number you can actually train
-          against. Typing Battle turns that number into a race. The reaction test uses the
-          browser&rsquo;s high-resolution clock rather than a rough timer. And the memory game maps
-          neatly onto the classic research on short-term memory span.
+          Each one does a real, repeatable thing, and works the same on a phone as on a laptop. The
+          typing test gives you a number you can actually train against, and Typing Battle turns
+          that number into a race. The reaction test uses the browser&rsquo;s high-resolution clock
+          rather than a rough timer. The memory game maps neatly onto the classic research on
+          short-term memory span. And Darts 301 is a proper game of 301 — busts, doubles, checkouts
+          — for up to five people who only need to share a five-character code.
         </p>
         <h3 className="text-xl text-[var(--ink)]">Are the scores stored anywhere?</h3>
         <p>

@@ -12,6 +12,8 @@
  * on so the reader can judge how much to trust a given result.
  */
 
+import { hasJapanese } from "./kana";
+
 export type Direction = "en-ja" | "ja-en";
 
 export interface TranslationResult {
@@ -21,6 +23,12 @@ export interface TranslationResult {
   /** Alternative translations it also holds for this text. */
   alternatives: string[];
   provider: string;
+  /**
+   * True when nothing the service returned was in the target language, so the
+   * text above is the original passed straight through. The reader is told
+   * rather than being left to assume the English in front of them is Japanese.
+   */
+  untranslated?: boolean;
 }
 
 export class TranslationError extends Error {
@@ -64,7 +72,7 @@ interface MyMemoryResponse {
   responseStatus?: number | string;
   quotaFinished?: boolean;
   responseDetails?: string;
-  matches?: Array<{ translation?: string; quality?: string; match?: number }>;
+  matches?: Array<{ translation?: string; quality?: string | number; match?: number | string }>;
 }
 
 async function translateChunk(
@@ -108,25 +116,118 @@ async function translateChunk(
     );
   }
 
-  const translated = data.responseData?.translatedText;
-  if (!translated || /^(?:PLEASE SELECT|INVALID|QUERY LENGTH)/i.test(translated)) {
+  const primary = data.responseData?.translatedText;
+  if (primary && /^(?:PLEASE SELECT|INVALID|QUERY LENGTH)/i.test(primary)) {
     throw new TranslationError(
       data.responseDetails || "The translation service could not handle that text.",
       false,
     );
   }
 
-  const alternatives = (data.matches ?? [])
-    .map((match) => match.translation)
-    .filter((t): t is string => typeof t === "string" && t.trim() !== translated.trim())
+  const chosen = chooseTranslation(data, chunk, direction);
+  if (!chosen) {
+    const echoed = decodeEntities(primary ?? "").trim();
+    if (!echoed) {
+      throw new TranslationError(
+        data.responseDetails || "The translation service could not handle that text.",
+        false,
+      );
+    }
+    // Every entry the service held was the source text again. Showing it is
+    // still more use than an error, as long as it is labelled as untranslated
+    // rather than left to look like a result.
+    return {
+      text: echoed,
+      match: 0,
+      alternatives: [],
+      provider: "MyMemory",
+      untranslated: true,
+    };
+  }
+
+  const alternatives = candidatesFrom(data, chunk)
+    .filter((entry) => entry.text !== chosen.text && inTargetLanguage(entry.text, direction))
+    .map((entry) => entry.text)
     .slice(0, 3);
 
   return {
-    text: decodeEntities(translated),
-    match: Number(data.responseData?.match ?? 0) || 0,
-    alternatives: [...new Set(alternatives.map(decodeEntities))],
+    text: chosen.text,
+    match: chosen.match,
+    alternatives,
     provider: "MyMemory",
   };
+}
+
+interface Candidate {
+  text: string;
+  /** 0-1 similarity the service reports between its stored source and ours. */
+  match: number;
+  /** 0-100 rating contributors gave the entry. */
+  quality: number;
+}
+
+/**
+ * Whether a candidate is written in the language that was actually asked for.
+ *
+ * MyMemory's memory is contributed by its users, and an entry whose
+ * "translation" is the source text again — or a romaji gloss of it — is stored
+ * and scored exactly like a real one: "onboarding" comes back for onboarding
+ * at match 0.99, "arigatou" for thanks at 1.0. Nothing in the numbers
+ * distinguishes those from a translation, but the script does.
+ */
+function inTargetLanguage(text: string, direction: Direction): boolean {
+  return direction === "en-ja"
+    ? hasJapanese(text)
+    : /[A-Za-z]/.test(text) && !hasJapanese(text);
+}
+
+/** The service's own pick first, then its alternatives, deduplicated. */
+function candidatesFrom(data: MyMemoryResponse, source: string): Candidate[] {
+  const echo = source.trim().toLowerCase();
+  const seen = new Set<string>();
+  const out: Candidate[] = [];
+
+  const add = (raw: unknown, match: unknown, quality: unknown): void => {
+    if (typeof raw !== "string") return;
+    const text = decodeEntities(raw).trim();
+    // An entry that repeats the input is not a translation of it.
+    if (!text || text.toLowerCase() === echo || seen.has(text)) return;
+    seen.add(text);
+    out.push({ text, match: Number(match) || 0, quality: Number(quality) || 0 });
+  };
+
+  add(data.responseData?.translatedText, data.responseData?.match, 0);
+  for (const entry of data.matches ?? []) add(entry.translation, entry.match, entry.quality);
+  return out;
+}
+
+/**
+ * Picks the result to show.
+ *
+ * The service's own choice is kept whenever it is usable, because it alone was
+ * made with the surrounding text in view. Only when that choice is unusable —
+ * empty, or still in the source language — do the alternatives matter, and
+ * then the best-rated one wins. The right answer is very often already in
+ * `matches` when `translatedText` is wrong: hello returns an empty string next
+ * to こんにちは, onboarding returns itself next to オンボーディング.
+ */
+function chooseTranslation(
+  data: MyMemoryResponse,
+  source: string,
+  direction: Direction,
+): Candidate | null {
+  const candidates = candidatesFrom(data, source);
+  const [first] = candidates;
+  if (first && inTargetLanguage(first.text, direction)) return first;
+
+  const usable = candidates.filter((entry) => inTargetLanguage(entry.text, direction));
+  if (usable.length === 0) return null;
+  // Rating first, similarity to break a tie; ties beyond that keep the
+  // service's own ordering.
+  return usable.reduce((best, entry) => {
+    const better = entry.quality - best.quality || entry.match - best.match;
+    return better > 0 ? entry : best;
+  });
 }
 
 /** The API returns HTML entities in some results. */
@@ -156,6 +257,11 @@ function cacheKey(text: string, direction: Direction): string {
 
 export function cached(text: string, direction: Direction): TranslationResult | undefined {
   return cache.get(cacheKey(text, direction));
+}
+
+/** Empties the session cache. Tests need each case to reach the network stub. */
+export function clearTranslationCache(): void {
+  cache.clear();
 }
 
 function remember(text: string, direction: Direction, result: TranslationResult): void {

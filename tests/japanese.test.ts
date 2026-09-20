@@ -1,11 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   hasJapanese, isKana, isKanji, kanaToRomaji, romajiToKana,
   toHiragana, toKatakana, typingSteps, typingString,
 } from "../src/lib/japanese/kana";
 import { analyse, analyseLines, kanjiIn } from "../src/lib/japanese/annotate";
 import { KANJI, WORDS } from "../src/lib/japanese/dictionary";
-import { splitForTranslation, worthTranslating } from "../src/lib/japanese/translate";
+import {
+  clearTranslationCache, splitForTranslation, translate, worthTranslating,
+} from "../src/lib/japanese/translate";
 import { checkPoliteness, toMasuForm } from "../src/lib/japanese/politeness";
 
 describe("kana to romaji", () => {
@@ -154,12 +156,36 @@ describe("reading annotation", () => {
   });
 
   it("marks a lone kanji reading as approximate rather than certain", () => {
+    // 鉛 is jouyou, so it has a reading — but read alone, outside any word, the
+    // reading is a reasonable guess rather than a fact.
     const result = analyse("鉛");
     const token = result.tokens[0];
-    // Not in the bundled list, so nothing is invented.
-    expect(token.source).toBe("unresolved");
-    expect(token.reading).toBe("");
-    expect(result.unresolved).toContain("鉛");
+    expect(token.source).toBe("kanji");
+    expect(token.confidence).toBe("approximate");
+    expect(token.reading).not.toBe("");
+    expect(result.unresolved).toEqual([]);
+  });
+
+  it("still invents nothing for a kanji outside jouyou and jinmeiyou", () => {
+    // 彁 is a ghost character — it has no reading anywhere, which is exactly
+    // the case the unresolved path exists for.
+    const result = analyse("彁");
+    expect(result.tokens[0].source).toBe("unresolved");
+    expect(result.tokens[0].reading).toBe("");
+    expect(result.unresolved).toContain("彁");
+    // Not "?" and not the kanji either: a character that cannot be read
+    // contributes nothing to the romaji line and is reported through
+    // `unresolved` instead, where the UI can mark it.
+    expect(result.romaji).toBe("");
+  });
+
+  it("gives every jouyou kanji a reading, so ? does not reach the page", () => {
+    // The complaint this was built for: ordinary business Japanese was coming
+    // back as "? shiki kaisha" and "? sanha".
+    for (const text of ["株式会社", "皆さん", "瞬時", "懸念", "裏側", "主体的", "時期"]) {
+      expect(analyse(text).unresolved, text).toEqual([]);
+      expect(analyse(text).romaji, text).not.toContain("?");
+    }
   });
 
   it("never claims to be complete when a reading was guessed", () => {
@@ -383,7 +409,9 @@ describe("compound recognition", () => {
     const result = analyse("檸檬");
     expect(result.unresolved.length).toBeGreaterThan(0);
     expect(HAS_KANJI.test(result.romaji)).toBe(false);
-    expect(result.romaji).toContain("?");
+    // Nothing is put in its place — not the kanji, and not a "?", which would
+    // read as part of the sentence.
+    expect(result.romaji).not.toContain("?");
     // The original is still available, just kept separately from the reading.
     expect(result.tokens.map((t) => t.surface).join("")).toBe("檸檬");
   });
@@ -689,5 +717,97 @@ describe("on'yomi gemination", () => {
     expect(analyse("特別").hiragana).toBe("とくべつ");
     expect(analyse("学生").hiragana).toBe("がくせい");
     expect(analyse("開発").hiragana).toBe("かいはつ");
+  });
+});
+
+/**
+ * MyMemory's translation memory is contributed by its users, and an entry whose
+ * "translation" repeats the source — or romanises it — is stored and scored
+ * like any other. These are real responses the service returns today.
+ */
+describe("choosing a translation from MyMemory", () => {
+  const respond = (body: unknown) =>
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(body), { status: 200 })),
+    );
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    clearTranslationCache();
+  });
+
+  it("falls back to the alternatives when the top pick is empty", async () => {
+    // What "hello" actually returns: an empty translatedText beside こんにちは.
+    respond({
+      responseData: { translatedText: "", match: 1 },
+      matches: [
+        { translation: "", quality: "74", match: 1 },
+        { translation: "こんにちは", quality: "74", match: 1 },
+      ],
+    });
+    expect((await translate("hello", "en-ja")).text).toBe("こんにちは");
+  });
+
+  it("rejects an entry that is only the English word again", async () => {
+    // "onboarding" translates to itself at match 0.99, with the real answer next to it.
+    respond({
+      responseData: { translatedText: "onboarding", match: 0.99 },
+      matches: [
+        { translation: "onboarding", quality: "0", match: 0.99 },
+        { translation: "オンボーディング", quality: "74", match: 0.98 },
+        { translation: "新人研修", quality: "74", match: 0.98 },
+      ],
+    });
+    expect((await translate("onboarding", "en-ja")).text).toBe("オンボーディング");
+  });
+
+  it("rejects a romaji gloss, and prefers the better-rated alternative", async () => {
+    // "thanks" returns "arigatou" — Japanese, but not in Japanese script.
+    respond({
+      responseData: { translatedText: "arigatou", match: 1 },
+      matches: [
+        { translation: "arigatou", quality: "74", match: 1 },
+        { translation: "ありがとうございます", quality: "74", match: 0.98 },
+        { translation: "ありがとうございます。", quality: "0", match: 0.97 },
+      ],
+    });
+    expect((await translate("thanks", "en-ja")).text).toBe("ありがとうございます");
+  });
+
+  it("keeps the service's own pick when it is usable", async () => {
+    respond({
+      responseData: { translatedText: "期限", match: 0.99 },
+      matches: [
+        { translation: "期限", quality: "74", match: 0.99 },
+        { translation: "締め切り", quality: "100", match: 0.9 },
+      ],
+    });
+    const result = await translate("deadline", "en-ja");
+    // Not 締め切り, despite its higher rating: the top pick was translated.
+    expect(result.text).toBe("期限");
+    expect(result.match).toBe(0.99);
+    expect(result.alternatives).toContain("締め切り");
+  });
+
+  it("labels a result that never left the source language", async () => {
+    respond({
+      responseData: { translatedText: "Kubernetes", match: 0.99 },
+      matches: [{ translation: "Kubernetes", quality: "74", match: 0.99 }],
+    });
+    const result = await translate("Kubernetes", "en-ja");
+    expect(result.untranslated).toBe(true);
+    expect(result.match).toBe(0);
+  });
+
+  it("applies the same test in reverse, rejecting Japanese sent back for ja-en", async () => {
+    respond({
+      responseData: { translatedText: "駅", match: 1 },
+      matches: [
+        { translation: "駅", quality: "74", match: 1 },
+        { translation: "station", quality: "74", match: 0.98 },
+      ],
+    });
+    expect((await translate("駅", "ja-en")).text).toBe("station");
   });
 });

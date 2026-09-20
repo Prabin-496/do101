@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/copy-pdf-worker.mjs",
+    "predev": "node scripts/copy-pdf-worker.mjs && node scripts/copy-kuromoji-dict.mjs",
     "dev": "next dev",
-    "prebuild": "node scripts/copy-pdf-worker.mjs",
+    "prebuild": "node scripts/copy-pdf-worker.mjs && node scripts/copy-kuromoji-dict.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@cantoo/pdf-lib": "^2.9.2",
+    "@sglkc/kuromoji": "^1.1.0",
     "canvas-confetti": "^1.9.4",
     "d3-geo": "^3.1.1",
     "docx": "^9.7.1",
