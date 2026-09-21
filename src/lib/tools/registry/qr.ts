@@ -20,7 +20,7 @@ export const QR_TOOLS: Tool[] = [
     aiInvocable: true,
     input: "text",
     output: "file",
-    related: ["url-encoder", "image-compressor", "base64", "text-cleaner"],
+    related: ["url-encoder", "phone-check", "image-compressor", "base64", "text-cleaner"],
     seoTitle: "Free QR Code Generator — URL, Wi-Fi & Text QR | DO101",
     seoDescription:
       "Create free QR codes for links, text, email, phone numbers and Wi-Fi. Adjustable size and error correction, PNG or SVG download, no sign-up.",

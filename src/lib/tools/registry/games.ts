@@ -148,7 +148,7 @@ export const GAMES_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "none",
     output: "numbers",
-    related: ["typing-test", "memory-test", "typing-battle", "age"],
+    related: ["typing-test", "darts", "memory-test", "typing-battle", "age"],
     seoTitle: "Reaction Time Test — Measure Your Reflexes in ms | DO101",
     seoDescription:
       "Test your reaction time in milliseconds across five rounds using high-resolution browser timing. Free, no sign-up, share your average.",
@@ -201,7 +201,7 @@ export const GAMES_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "none",
     output: "numbers",
-    related: ["reaction-test", "click-speed-test", "typing-test", "chimp-test"],
+    related: ["reaction-test", "darts", "click-speed-test", "typing-test", "chimp-test"],
     seoTitle: "Aim Trainer — Free Mouse Accuracy Test | DO101",
     seoDescription: "Test your aim and mouse accuracy: hit 30 targets and see your average time per target. Free, no sign-up, works on mouse and touch.",
     steps: [
@@ -293,7 +293,7 @@ export const GAMES_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "none",
     output: "numbers",
-    related: ["visual-memory", "memory-test", "chimp-test", "word-scramble"],
+    related: ["visual-memory", "2048", "memory-test", "chimp-test", "word-scramble"],
     seoTitle: "Number Memory Test — How Many Digits Can You Recall? | DO101",
     seoDescription: "Test your short-term memory: a number flashes up and you type it back, gaining a digit each level. Free, no sign-up, score saved locally.",
     steps: [
@@ -519,7 +519,7 @@ export const GAMES_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "none",
     output: "numbers",
-    related: ["word-scramble", "color-match", "typing-test", "click-speed-test"],
+    related: ["word-scramble", "2048", "color-match", "typing-test", "click-speed-test"],
     seoTitle: "Maths Sprint — Free Mental Arithmetic Game | DO101",
     seoDescription: "Solve as many arithmetic problems as you can in 60 seconds, with difficulty rising as your streak grows. Free mental maths practice, no sign-up.",
     steps: [

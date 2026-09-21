@@ -1,12 +1,12 @@
 import * as React from "react";
 import type { Tool } from "@/lib/tools/types";
-import { CATEGORY_META } from "@/lib/tools/types";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { Faq } from "./Faq";
 import { RelatedTools } from "./RelatedTools";
 import { AdSlot } from "./AdSlot";
 import { ToolVisitTracker } from "./ToolVisitTracker";
 import { InfoNote } from "@/components/ui/Feedback";
+import { toolBreadcrumbs } from "@/lib/tools/links";
 
 const ACCENT_RING: Record<Tool["accent"], string> = {
   grass: "bg-[var(--grass-soft)]",
@@ -36,14 +36,6 @@ export function ToolShell({
    */
   wide?: boolean;
 }) {
-  const category = CATEGORY_META[tool.category];
-  const categoryHref =
-    tool.category === "game"
-      ? "/games"
-      : tool.category === "calculator"
-        ? "/calculators"
-        : `/tools?category=${category.slug}`;
-
   // Prose stays at a readable width even when the tool spans the page.
   const prose = wide ? "mx-auto w-full max-w-4xl" : "";
 
@@ -53,13 +45,7 @@ export function ToolShell({
     >
       <ToolVisitTracker id={tool.id} />
       <div className={prose}>
-        <Breadcrumbs
-          items={[
-            { name: "Home", href: "/" },
-            { name: category.label, href: categoryHref },
-            { name: tool.name, href: tool.route },
-          ]}
-        />
+        <Breadcrumbs items={toolBreadcrumbs(tool)} />
 
         <header className="mb-6">
           <div className="flex items-start gap-4">

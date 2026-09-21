@@ -5,6 +5,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { toolMetadata } from "@/lib/seo/metadata";
 import { toolSchema, faqSchema, breadcrumbSchema } from "@/lib/seo/structured-data";
 import { getTool } from "@/lib/tools/tool-registry";
+import { toolBreadcrumbs } from "@/lib/tools/links";
 import { loadCountries, formatArea } from "@/lib/geo/countries";
 
 const tool = getTool("earth-globe")!;
@@ -27,11 +28,7 @@ export default async function Page() {
         data={[
           toolSchema(tool),
           faqSchema(tool.faqs)!,
-          breadcrumbSchema([
-            { name: "Home", href: "/" },
-            { name: "Learn", href: "/tools/earth-globe" },
-            { name: tool.name, href: tool.route },
-          ]),
+          breadcrumbSchema(toolBreadcrumbs(tool)),
         ]}
       />
       <ToolShell

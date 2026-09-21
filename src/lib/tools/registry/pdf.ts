@@ -20,7 +20,7 @@ export const PDF_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "file",
     output: "file",
-    related: ["pdf-split", "pdf-compress", "pdf-reorder-pages", "image-to-pdf"],
+    related: ["pdf-split", "pdf-compare", "pdf-compress", "pdf-reorder-pages", "image-to-pdf"],
     seoTitle: "Merge PDF — Combine PDF Files Free, No Upload | DO101",
     seoDescription: "Merge multiple PDF files into one document in your browser. Reorder before merging, no watermark, no sign-up, and your files are never uploaded.",
     steps: [
@@ -253,7 +253,7 @@ export const PDF_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "file",
     output: "file",
-    related: ["png-to-pdf", "image-to-pdf", "pdf-to-jpg", "pdf-merge"],
+    related: ["png-to-pdf", "scan-to-pdf", "image-to-pdf", "pdf-to-jpg", "pdf-merge"],
     seoTitle: "JPG to PDF — Convert Photos to PDF Free Online | DO101",
     seoDescription: "Convert JPG and JPEG photos into a single PDF. Reorder pages, choose A4 or Letter, add margins. Free, no watermark, and nothing is uploaded.",
     steps: [
@@ -340,7 +340,7 @@ export const PDF_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "file",
     output: "file",
-    related: ["jpg-to-pdf", "png-to-pdf", "pdf-merge", "image-compressor"],
+    related: ["jpg-to-pdf", "scan-to-pdf", "png-to-pdf", "pdf-merge", "image-compressor"],
     seoTitle: "Image to PDF — Convert Any Images to PDF Free | DO101",
     seoDescription: "Convert JPG, PNG, WebP, GIF and BMP images into a single PDF. Mix formats freely, reorder pages, and keep everything in your browser.",
     steps: [
@@ -631,7 +631,7 @@ export const PDF_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "file",
     output: "text",
-    related: ["pdf-to-word", "pdf-ocr", "word-counter", "text-cleaner"],
+    related: ["pdf-to-word", "pdf-compare", "pdf-ocr", "word-counter", "text-cleaner"],
     seoTitle: "PDF to Text — Extract Text from PDF Free | DO101",
     seoDescription: "Extract the text from a PDF in your browser, with page markers and word counts. Detects scanned PDFs and points you to OCR. Free, no upload.",
     steps: [
@@ -673,7 +673,7 @@ export const PDF_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "file",
     output: "file",
-    related: ["word-to-pdf", "pdf-to-text", "pdf-ocr", "pdf-merge"],
+    related: ["word-to-pdf", "pdf-to-powerpoint", "pdf-to-text", "pdf-ocr", "pdf-merge"],
     seoTitle: "PDF to Word — Convert PDF to Editable DOCX Free | DO101",
     seoDescription: "Convert a PDF into an editable Word .docx document in your browser. Keeps paragraphs and page breaks. Free, no sign-up, and nothing is uploaded.",
     steps: [
@@ -1218,7 +1218,7 @@ export const PDF_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "file",
     output: "file",
-    related: ["excel-to-pdf", "pdf-to-text", "csv-to-json", "pdf-to-word"],
+    related: ["excel-to-pdf", "pdf-to-powerpoint", "pdf-to-text", "csv-to-json", "pdf-to-word"],
     seoTitle: "PDF to Excel — Extract Tables to XLSX Free | DO101",
     seoDescription: "Extract tables from a PDF into a real Excel workbook using position-based detection, with a confidence score. Free and entirely in your browser.",
     steps: [

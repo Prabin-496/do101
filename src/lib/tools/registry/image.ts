@@ -517,7 +517,7 @@ export const IMAGE_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "text",
     output: "file",
-    related: ["image-compressor", "image-resizer", "jpg-to-webp", "canvas"],
+    related: ["image-compressor", "youtube-shorts-seo", "youtube-downloader", "image-resizer", "jpg-to-webp", "canvas"],
     seoTitle: "YouTube Thumbnail Downloader — Full Size, Free | DO101",
     seoDescription:
       "Paste a YouTube or Vimeo link and download its thumbnail in every size, up to 1280×720 HD. Shorts supported. Save as JPG, PNG or WebP. Free, no account, nothing uploaded.",

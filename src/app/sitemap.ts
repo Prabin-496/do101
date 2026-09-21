@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { TOOLS } from "@/lib/tools/tool-registry";
-import { CATEGORY_META, type ToolCategory } from "@/lib/tools/types";
+import { CATEGORY_META } from "@/lib/tools/types";
+import { HUB_CATEGORIES } from "@/lib/tools/links";
 import { CATEGORY_ORDER as NEWS_CATEGORIES } from "@/lib/news/types";
 import { absoluteUrl } from "@/lib/site";
 
@@ -27,16 +28,6 @@ const STATIC_ROUTES: Array<{
   { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
 ];
 
-/** Category hubs that have their own landing page under /tools. */
-const HUB_CATEGORIES: ToolCategory[] = [
-  "pdf",
-  "image",
-  "converter",
-  "text",
-  "developer",
-  "seo",
-  "datetime",
-];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();

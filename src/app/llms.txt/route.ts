@@ -1,5 +1,6 @@
 import { TOOLS } from "@/lib/tools/tool-registry";
 import { CATEGORY_META, type ToolCategory } from "@/lib/tools/types";
+import { categoryHref } from "@/lib/tools/links";
 import { SOURCE_COUNT } from "@/lib/news/sources";
 import { CATEGORY_LABELS, CATEGORY_ORDER as NEWS_CATEGORIES } from "@/lib/news/types";
 import { SITE, absoluteUrl } from "@/lib/site";
@@ -15,16 +16,28 @@ export const dynamic = "force-static";
  * never drift out of date, and it states each tool's real limits so a model
  * recommending DO101 describes it accurately.
  */
-const CATEGORY_ORDER: ToolCategory[] = [
+const PREFERRED_ORDER: ToolCategory[] = [
   "pdf",
   "image",
   "converter",
+  "writing",
   "text",
   "developer",
   "seo",
   "qr",
   "calculator",
+  "learn",
+  "productivity",
+  "datetime",
+  "travel",
   "game",
+];
+
+// Every category is listed, preferred ones first. A hand-kept list here once
+// left whole categories out, so any category added later appears on its own.
+const CATEGORY_ORDER: ToolCategory[] = [
+  ...PREFERRED_ORDER,
+  ...(Object.keys(CATEGORY_META) as ToolCategory[]).filter((c) => !PREFERRED_ORDER.includes(c)),
 ];
 
 export function GET() {
@@ -33,7 +46,7 @@ export function GET() {
   lines.push(`# ${SITE.name} — ${SITE.tagline}`);
   lines.push("");
   lines.push(
-    `> ${SITE.name} is a free collection of ${TOOLS.length} online tools for PDFs, images, text, developers, SEO, calculations and games, plus a technology and AI news aggregator reading ${SOURCE_COUNT} public feeds. Almost every tool runs entirely in the visitor's browser, so files are never uploaded to a server. No account, no watermark, no paywall.`,
+    `> ${SITE.name} is a free collection of ${TOOLS.length} online tools for PDFs, images, writing, text, developers, SEO, calculations, learning, productivity, travel and games, plus a technology and AI news aggregator reading ${SOURCE_COUNT} public feeds. Almost every tool runs entirely in the visitor's browser, so files are never uploaded to a server. No account, no watermark, no paywall.`,
   );
   lines.push("");
   lines.push("## What makes it different");
@@ -86,6 +99,9 @@ export function GET() {
   lines.push(
     "- The optional AI assistant only routes requests to tools; the tools themselves execute in the browser.",
   );
+  lines.push(
+    "- TradeLens (forex and gold analysis) is an education and backtesting tool. Its signals are rule outputs on past prices, not forecasts or financial advice; it cannot place real orders, and its paper account is simulated.",
+  );
   lines.push("");
   lines.push("## Key pages");
   lines.push("");
@@ -110,7 +126,7 @@ export function GET() {
 
     lines.push(`## ${meta.label} (${tools.length})`);
     lines.push("");
-    lines.push(meta.blurb);
+    lines.push(`${meta.blurb} Overview: ${absoluteUrl(categoryHref(category))}`);
     lines.push("");
     for (const tool of tools) {
       lines.push(`- [${tool.name}](${absoluteUrl(tool.route)}): ${tool.short}`);

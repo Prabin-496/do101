@@ -41,6 +41,9 @@ export function toolSchema(tool: Tool): Json {
     name: tool.name,
     url: absoluteUrl(tool.route),
     description: tool.seoDescription,
+    image: absoluteUrl(`/og/${tool.id}`),
+    inLanguage: "en",
+    keywords: tool.keywords.join(", "),
     applicationCategory:
       tool.category === "game" ? "GameApplication" : "UtilitiesApplication",
     operatingSystem: "Any (web browser)",

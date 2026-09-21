@@ -196,3 +196,33 @@ export function rewardProfile(
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
+
+export interface Conversion {
+  /** Account-currency value of one unit of the quote currency, or null if unknown. */
+  rate: number | null;
+  /** How the rate was found, for the page to say out loud. */
+  how: "same" | "inverted" | "cross" | "needed";
+}
+
+/**
+ * How much one unit of an instrument's quote currency is worth in the account
+ * currency — the step that makes a pip value right for a pair that is not
+ * quoted in your own money.
+ *
+ *  - Quoted in the account currency (EUR/USD, XAU/USD for a USD account): 1.
+ *  - Based in the account currency (USD/JPY for a USD account): one over the
+ *    pair's own price, so no outside rate is needed.
+ *  - Anything else (EUR/GBP for a USD account): the quote currency's rate
+ *    against the account currency, which has to come from somewhere else.
+ */
+export function quoteToAccount(
+  instrument: Instrument,
+  price: number,
+  account: string,
+  crossRate?: number | null,
+): Conversion {
+  if (instrument.quote === account) return { rate: 1, how: "same" };
+  if (instrument.base === account && price > 0) return { rate: 1 / price, how: "inverted" };
+  if (crossRate && crossRate > 0) return { rate: crossRate, how: "cross" };
+  return { rate: null, how: "needed" };
+}

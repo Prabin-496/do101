@@ -470,7 +470,7 @@ export const PRODUCTIVITY_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "none",
     output: "none",
-    related: ["canvas", "workspace", "notes", "typing-battle"],
+    related: ["canvas", "phone-check", "workspace", "notes", "typing-battle"],
     seoTitle: "TalkieGenZ — Free Online Walkie-Talkie, Push to Talk | DO101",
     seoDescription:
       "A free browser walkie-talkie for up to six people. Share a code, hold the button, talk. Peer-to-peer, nothing recorded, no account and no app to install.",

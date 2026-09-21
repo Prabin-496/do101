@@ -65,7 +65,7 @@ export const SEO_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "text",
     output: "text",
-    related: ["serp-preview", "slug-generator", "html-encoder", "json-formatter"],
+    related: ["serp-preview", "youtube-shorts-seo", "slug-generator", "html-encoder", "json-formatter"],
     seoTitle: "Meta Tag Generator — Open Graph & Twitter Cards Free | DO101",
     seoDescription: "Generate a complete HTML head block: meta description, canonical, robots, Open Graph and Twitter card tags, correctly escaped with length warnings.",
     steps: [

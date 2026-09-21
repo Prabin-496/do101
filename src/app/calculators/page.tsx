@@ -10,9 +10,9 @@ import { toolsByCategory } from "@/lib/tools/tool-registry";
 const calculators = toolsByCategory("calculator");
 
 export const metadata: Metadata = buildMetadata({
-  title: "Free Online Calculators — Age, Percentage & BMI | DO101",
+  title: "Free Online Calculators — EMI, Compound Interest, Lot Size | DO101",
   description:
-    "Free calculators that show their working: exact age, percentages, discounts and sale prices, and BMI in metric or imperial. Instant, private and browser-based.",
+    "Free calculators that show their working: loan EMI, compound interest, forex lot size and pip value, percentages, discounts, age and BMI. Private and browser-based.",
   path: "/calculators",
 });
 

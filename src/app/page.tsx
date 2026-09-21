@@ -351,7 +351,7 @@ export default function HomePage() {
             ))}
           </div>
           <div className="mt-4">
-            <ButtonLink href="/tools?category=developer" tone="panel" size="sm">
+            <ButtonLink href="/tools/developer" tone="panel" size="sm">
               All developer tools
             </ButtonLink>
           </div>

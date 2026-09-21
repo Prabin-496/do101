@@ -7,14 +7,17 @@ export function buildMetadata({
   description,
   path,
   noIndex = false,
+  image = "/opengraph-image",
 }: {
   title: string;
   description: string;
   path: string;
   noIndex?: boolean;
+  /** Path to the preview image. Tools pass their own. */
+  image?: string;
 }): Metadata {
   const url = absoluteUrl(path);
-  const ogImage = `${absoluteUrl("/opengraph-image")}`;
+  const ogImage = absoluteUrl(image);
 
   return {
     // Absolute: every title here already carries its own "| DO101" suffix, so
@@ -48,6 +51,7 @@ export function toolMetadata(tool: Tool): Metadata {
       title: tool.seoTitle,
       description: tool.seoDescription,
       path: tool.route,
+      image: `/og/${tool.id}`,
     }),
     keywords: tool.keywords,
   };

@@ -76,7 +76,7 @@ export const LEARN_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "none",
     output: "none",
-    related: ["digital-clock", "earth-globe", "timestamp-converter", "reaction-test"],
+    related: ["weather", "digital-clock", "earth-globe", "timestamp-converter", "reaction-test"],
     seoTitle: "Train Station Alarm — GPS Wake-Up Before Your Stop | DO101",
     seoDescription: "Set a GPS alarm that vibrates and rings before your train station. Works offline once armed, no app to install, no account. Free in your browser.",
     steps: [
@@ -241,7 +241,7 @@ export const LEARN_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "none",
     output: "none",
-    related: ["percentage", "weather", "canvas", "notes"],
+    related: ["position-size", "pip-value", "currency-converter", "compound-interest"],
     seoTitle: "Free Forex & Gold Strategy Backtester — XAUUSD Analysis | DO101",
     seoDescription:
       "Backtest gold and forex strategies free in your browser. Candlestick charts, RSI, MACD, transparent buy and sell rules, risk calculator and paper trading. No account.",
