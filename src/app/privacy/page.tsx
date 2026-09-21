@@ -127,24 +127,32 @@ export default function PrivacyPage() {
 
         <h2>Advertising</h2>
         <p>
-          DO101 is preparing to show advertising from Google AdSense to cover hosting. Ad code is
-          only loaded when a publisher ID is configured, and it is not configured on a deployment
-          that has not been approved. When ads are enabled, Google and its partners may use cookies
-          or similar technologies to serve and measure them, subject to Google&rsquo;s own policies.
-          You can review and change your Google ad settings at{" "}
+          DO101 shows advertising from Google AdSense to cover hosting. Third-party vendors,
+          including Google, use cookies to serve ads based on your prior visits to this website and
+          other websites. Google&rsquo;s use of advertising cookies enables it and its partners to
+          serve ads to you based on those visits. Ads never see the files or text you work on in a
+          tool — that stays on your device.
+        </p>
+        <p>
+          You can opt out of personalised advertising in{" "}
           <a
             href="https://adssettings.google.com"
             rel="noopener noreferrer nofollow"
             target="_blank"
           >
-            adssettings.google.com
+            Google&rsquo;s Ads Settings
+          </a>
+          , or opt out of some third-party vendors&rsquo; use of cookies for personalised advertising
+          at{" "}
+          <a href="https://www.aboutads.info/choices/" rel="noopener noreferrer nofollow" target="_blank">
+            aboutads.info
           </a>
           .
         </p>
         <p>
-          Where consent is legally required for advertising or analytics cookies in your
-          jurisdiction, DO101 will present the appropriate consent control before those technologies
-          load.
+          Where consent is legally required for advertising cookies — in the European Economic Area,
+          the UK and Switzerland — you are asked through Google&rsquo;s consent message before
+          personalised ads are shown.
         </p>
 
         <h2>Cookies</h2>

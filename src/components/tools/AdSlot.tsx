@@ -1,5 +1,6 @@
 import { SITE } from "@/lib/site";
 import { cn } from "@/lib/utils/cn";
+import { AdPush } from "./AdPush";
 
 /**
  * Ad placeholder. Nothing is rendered unless NEXT_PUBLIC_ADSENSE_CLIENT and a
@@ -47,6 +48,7 @@ export function AdSlot({
         data-ad-format={format}
         data-full-width-responsive="true"
       />
+      <AdPush />
     </aside>
   );
 }

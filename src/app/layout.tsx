@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import { Nunito, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { SITE, absoluteUrl } from "@/lib/site";
@@ -51,6 +50,8 @@ export const metadata: Metadata = {
     description: SITE.description,
   },
   robots: { index: true, follow: true },
+  // AdSense site verification (the "Meta tag" method).
+  ...(SITE.adsenseClient ? { other: { "google-adsense-account": SITE.adsenseClient } } : {}),
 };
 
 export const viewport: Viewport = {
@@ -73,6 +74,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       data-scroll-behavior="smooth"
       className={`${nunito.variable} ${mono.variable}`}
     >
+      <head>
+        {SITE.adsenseClient ? (
+          // In <head> exactly as AdSense asks, so its crawler finds it when verifying the site.
+          <script
+            async
+            crossOrigin="anonymous"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${SITE.adsenseClient}`}
+          />
+        ) : null}
+      </head>
       <body className="flex min-h-dvh flex-col antialiased">
         <ThemeProvider>
           <LanguageProvider>
@@ -96,14 +107,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </LanguageProvider>
         </ThemeProvider>
         <JsonLd data={[websiteSchema(), organizationSchema()]} />
-        {SITE.adsenseClient ? (
-          <Script
-            async
-            strategy="afterInteractive"
-            crossOrigin="anonymous"
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${SITE.adsenseClient}`}
-          />
-        ) : null}
       </body>
     </html>
   );
