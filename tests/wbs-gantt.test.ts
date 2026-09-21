@@ -14,7 +14,8 @@ import {
   MAX_PERIODS,
   parseIso,
   periodStart,
-  textBar,
+  shiftBar,
+  timeBands,
   toIso,
   todayIso,
 } from "@/lib/wbs/gantt";
@@ -216,49 +217,17 @@ describe("bars", () => {
   });
 });
 
-describe("the block-character bar", () => {
-  it("fills only the part of the timeline the task covers", () => {
-    const d = doc(tree());
-    const rows = flatten(d);
-    const range = ganttRange(rows, d.gantt);
-    const bars = ganttBars(d, rows, range);
-    const delivery = bars.find((bar) => bar.row.name === "Delivery")!;
-    const bar = textBar(delivery, range, 20);
-    expect(bar).toHaveLength(20);
-    expect(bar.startsWith("·")).toBe(true);
-    expect(bar.trimEnd().endsWith("·")).toBe(false);
-  });
-
-  it("shows how much of a task is done", () => {
-    const d = doc(tree());
-    const rows = flatten(d);
-    const range = ganttRange(rows, d.gantt);
-    const bars = ganttBars(d, rows, range);
-    const budget = bars.find((bar) => bar.row.name === "Budget")!;
-    const bar = textBar(budget, range, 40);
-    expect(bar).toContain("█");
-    expect(bar).toContain("▒");
-  });
-
-  it("gives a dateless task an empty bar", () => {
-    const d = doc([newTask("Someday")]);
-    const rows = flatten(d);
-    const range = ganttRange(rows, d.gantt);
-    expect(textBar(ganttBars(d, rows, range)[0], range, 10)).toBe("");
-  });
-});
-
 describe("the Gantt sheet", () => {
   it("has a column per period and a row per task", () => {
     const d = doc(tree(), { scale: "week" });
-    const grid = buildGanttGrid(d, flatten(d));
+    const grid = buildGanttGrid(d);
     expect(grid.rows).toHaveLength(4);
     expect(grid.columns.filter((column) => column.key.startsWith("p-"))).toHaveLength(6);
   });
 
   it("puts a block in the periods a task is running", () => {
-    const d = doc(tree(), { scale: "week", showTextBar: false });
-    const grid = buildGanttGrid(d, flatten(d));
+    const d = doc(tree(), { scale: "week" });
+    const grid = buildGanttGrid(d);
     const first = grid.columns.findIndex((column) => column.key.startsWith("p-"));
     const scope = grid.rows[1];
     expect(scope[first].text).toBe("█");
@@ -267,57 +236,73 @@ describe("the Gantt sheet", () => {
 
   it("writes the dates as real dates, not text", () => {
     const d = doc(tree());
-    const grid = buildGanttGrid(d, flatten(d));
+    const grid = buildGanttGrid(d);
     const column = grid.columns.findIndex((entry) => entry.key === "start");
     expect(grid.rows[1][column].kind).toBe("date");
     expect(typeof grid.rows[1][column].value).toBe("number");
   });
 
-  it("includes the duration in days", () => {
+  it("includes the duration the sheet works out", () => {
     const d = doc(tree());
-    const grid = buildGanttGrid(d, flatten(d));
-    const column = grid.columns.findIndex((entry) => entry.key === "days");
+    const grid = buildGanttGrid(d);
+    const column = grid.columns.findIndex((entry) => entry.key === "duration");
     expect(grid.rows[1][column].value).toBe(5);
   });
 
-  it("shows the columns that were asked for", () => {
-    const d = doc(tree(), { showFields: ["owner"] });
-    const grid = buildGanttGrid(d, flatten(d));
+  it("leads with the same columns as the WBS sheet, then the periods", () => {
+    const d = doc(tree(), { scale: "month" });
+    const labels = buildGanttGrid(d).columns.map((column) => column.label);
+    expect(labels.slice(0, 8)).toEqual([
+      "WBS Number",
+      "Task Title",
+      "Task Owner",
+      "Start Date",
+      "Due Date",
+      "Duration",
+      "% Complete",
+      "Timeline/Weeks",
+    ]);
+  });
+
+  it("carries the sheet's own columns, so the structure matches", () => {
+    const d = doc(tree());
+    const grid = buildGanttGrid(d);
     expect(grid.columns.some((column) => column.key === "owner")).toBe(true);
+    expect(grid.columns.some((column) => column.key === "timeline")).toBe(true);
   });
 
   it("indents the task names the way the sheet export does", () => {
     const d = doc(tree());
-    const grid = buildGanttGrid(d, flatten(d));
+    const grid = buildGanttGrid(d);
     const column = grid.columns.findIndex((entry) => entry.key === "name");
     expect(grid.rows[1][column].text).toBe("    Scope");
   });
 
   it("groups the rows so branches fold in Excel", () => {
     const d = doc(tree());
-    expect(buildGanttGrid(d, flatten(d)).outline).toEqual([0, 1, 1, 0]);
+    expect(buildGanttGrid(d).outline).toEqual([0, 1, 1, 0]);
   });
 });
 
 describe("copying to a spreadsheet", () => {
   it("separates cells with tabs and rows with CRLF", () => {
     const d = doc(tree(), { scale: "month" });
-    const tsv = gridToTsv(buildGanttGrid(d, flatten(d)));
+    const tsv = gridToTsv(buildGanttGrid(d));
     const lines = tsv.split("\r\n");
     expect(lines).toHaveLength(5);
-    expect(lines[0].split("\t").length).toBe(buildGanttGrid(d, flatten(d)).columns.length);
+    expect(lines[0].split("\t").length).toBe(buildGanttGrid(d).columns.length);
   });
 
   it("never lets a cell's own tabs or newlines break a column", () => {
     const d = doc([{ ...newTask("Two\tparts\nhere"), values: { start: "2026-03-02", finish: "2026-03-03" } }]);
-    const tsv = gridToTsv(buildGanttGrid(d, flatten(d)));
+    const tsv = gridToTsv(buildGanttGrid(d));
     expect(tsv.split("\r\n")).toHaveLength(2);
     expect(tsv).toContain("Two parts here");
   });
 
   it("also offers an HTML table, with codes marked as text", () => {
     const d = doc(tree(), { scale: "month" });
-    const html = gridToHtml(buildGanttGrid(d, flatten(d)));
+    const html = gridToHtml(buildGanttGrid(d));
     expect(html.startsWith("<table>")).toBe(true);
     expect(html).toContain("mso-number-format");
     expect(html).toContain("Planning");
@@ -325,20 +310,20 @@ describe("copying to a spreadsheet", () => {
 
   it("escapes markup in a task name", () => {
     const d = doc([newTask("<script>&")]);
-    expect(gridToHtml(buildGanttGrid(d, flatten(d)))).toContain("&lt;script&gt;&amp;");
+    expect(gridToHtml(buildGanttGrid(d))).toContain("&lt;script&gt;&amp;");
   });
 });
 
 describe("what Excel actually receives", () => {
   it("keeps the outline indent, which HTML would otherwise collapse", () => {
     const d = doc(tree(), { scale: "month" });
-    const html = gridToHtml(buildGanttGrid(d, flatten(d)));
+    const html = gridToHtml(buildGanttGrid(d));
     expect(html).toContain("&nbsp;&nbsp;&nbsp;&nbsp;Scope");
   });
 
   it("keeps the block characters that draw the bar", () => {
     const d = doc(tree(), { scale: "month" });
-    const grid = buildGanttGrid(d, flatten(d));
+    const grid = buildGanttGrid(d);
     expect(gridToTsv(grid)).toContain("█");
     expect(gridToHtml(grid)).toContain("█");
   });
@@ -349,6 +334,83 @@ describe("collapsed branches", () => {
     const tasks = tree();
     const collapsed = [{ ...tasks[0], collapsed: true }, tasks[1]];
     const d = doc(collapsed);
-    expect(buildGanttGrid(d, flatten(d)).rows).toHaveLength(4);
+    expect(buildGanttGrid(d).rows).toHaveLength(4);
+  });
+});
+
+describe("the band above the columns", () => {
+  it("groups day columns under their month", () => {
+    const { periods } = buildPeriods("2026-02-26", "2026-03-03", "day");
+    const bands = timeBands(periods, "day");
+    expect(bands.map((band) => [band.label, band.span])).toEqual([
+      ["Feb 2026", 3],
+      ["Mar 2026", 3],
+    ]);
+  });
+
+  it("groups week columns under their month", () => {
+    const { periods } = buildPeriods("2026-03-02", "2026-04-10", "week");
+    const bands = timeBands(periods, "week");
+    expect(bands.map((band) => band.label)).toEqual(["Mar 2026", "Apr 2026"]);
+  });
+
+  it("groups months and quarters under their year", () => {
+    const { periods } = buildPeriods("2026-11-01", "2027-02-01", "month");
+    expect(timeBands(periods, "month").map((band) => [band.label, band.span])).toEqual([
+      ["2026", 2],
+      ["2027", 2],
+    ]);
+  });
+
+  it("covers exactly as many columns as there are periods", () => {
+    const { periods } = buildPeriods("2026-01-01", "2026-12-31", "week");
+    const total = timeBands(periods, "week").reduce((sum, band) => sum + band.span, 0);
+    expect(total).toBe(periods.length);
+  });
+});
+
+describe("milestones", () => {
+  it("marks a one-day work package as a milestone", () => {
+    const d = doc([{ ...newTask("Launch"), values: { start: "2026-03-09", finish: "2026-03-09" } }]);
+    const rows = flatten(d);
+    expect(ganttBars(d, rows, ganttRange(rows, d.gantt))[0].milestone).toBe(true);
+  });
+
+  it("does not mark a summary task as a milestone", () => {
+    const child = { ...newTask("One day"), values: { start: "2026-03-09", finish: "2026-03-09" } };
+    const d = doc([{ ...newTask("Phase"), children: [child] }]);
+    const rows = flatten(d);
+    const bars = ganttBars(d, rows, ganttRange(rows, d.gantt));
+    expect(bars[0].milestone).toBe(false);
+    expect(bars[1].milestone).toBe(true);
+  });
+});
+
+describe("dragging a bar", () => {
+  function bar() {
+    const d = doc(tree());
+    const rows = flatten(d);
+    return ganttBars(d, rows, ganttRange(rows, d.gantt)).find((b) => b.row.name === "Scope")!;
+  }
+
+  it("moves both ends together", () => {
+    expect(shiftBar(bar(), 3, "move")).toEqual({ start: "2026-03-05", end: "2026-03-09" });
+  });
+
+  it("moves one end when an edge is dragged", () => {
+    expect(shiftBar(bar(), -2, "start")).toEqual({ start: "2026-02-28", end: "2026-03-06" });
+    expect(shiftBar(bar(), 4, "end")).toEqual({ start: "2026-03-02", end: "2026-03-10" });
+  });
+
+  it("never lets a task finish before it starts", () => {
+    expect(shiftBar(bar(), 30, "start")).toEqual({ start: "2026-03-06", end: "2026-03-06" });
+    expect(shiftBar(bar(), -30, "end")).toEqual({ start: "2026-03-02", end: "2026-03-02" });
+  });
+
+  it("does nothing for a task with no dates", () => {
+    const d = doc([newTask("Someday")]);
+    const rows = flatten(d);
+    const none = ganttBars(d, rows, ganttRange(rows, d.gantt))[0];
+    expect(shiftBar(none, 5, "move")).toBe(null);
   });
 });

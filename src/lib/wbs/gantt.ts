@@ -10,8 +10,8 @@
 
 import { isoWeek, MONTH_NAMES } from "@/lib/calendar/grid";
 import { formatValue, ISO_DATE } from "./fields";
-import { textCell, valueCell, type GridCell, type GridColumn, type SheetGrid } from "./grid";
-import type { GanttScale, GanttSettings, WbsDoc, WbsField, WbsRow } from "./model";
+import { buildGrid, textCell, type GridCell, type GridColumn, type SheetGrid } from "./grid";
+import { flatten, type GanttScale, type GanttSettings, type WbsDoc, type WbsRow } from "./model";
 
 /* ------------------------------ date maths ------------------------------ */
 
@@ -161,10 +161,37 @@ export function buildPeriods(
   return { periods, truncated };
 }
 
+/**
+ * The band above the period columns: months over days and weeks, years over
+ * months and quarters. A timeline of week numbers is unreadable without it.
+ */
+export interface TimeBand {
+  key: string;
+  label: string;
+  /** How many period columns this band covers. */
+  span: number;
+}
+
+export function timeBands(periods: GanttPeriod[], scale: GanttScale): TimeBand[] {
+  const bands: TimeBand[] = [];
+  for (const period of periods) {
+    const [y, m] = period.start.split("-").map(Number);
+    const byYear = scale === "month" || scale === "quarter";
+    const key = byYear ? String(y) : `${y}-${m}`;
+    const label = byYear ? String(y) : `${MONTH_NAMES[m - 1].slice(0, 3)} ${y}`;
+    const last = bands[bands.length - 1];
+    if (last && last.key === key) last.span += 1;
+    else bands.push({ key, label, span: 1 });
+  }
+  return bands;
+}
+
 /* --------------------------------- bars --------------------------------- */
 
 export interface GanttBar {
   row: WbsRow;
+  /** A task of a single day, drawn as a diamond rather than a bar. */
+  milestone: boolean;
   start: string | null;
   end: string | null;
   /** Inclusive duration in days. 0 when the task has no dates. */
@@ -222,13 +249,14 @@ export function ganttBars(doc: WbsDoc, rows: WbsRow[], range: GanttRange): Gantt
     const progress = typeof progressRaw === "number" ? progressRaw : null;
 
     if (!start || !end) {
-      return { row, start: null, end: null, days: 0, progress, offset: 0, length: 0 };
+      return { row, milestone: false, start: null, end: null, days: 0, progress, offset: 0, length: 0 };
     }
 
     const days = dayDiff(start, end) + 1;
     const offset = dayDiff(range.start, start) / span;
     return {
       row,
+      milestone: days <= 1 && !row.isSummary,
       start,
       end,
       days,
@@ -245,33 +273,7 @@ export function coversPeriod(bar: GanttBar, period: GanttPeriod): boolean {
   return dayDiff(bar.start, period.end) >= 0 && dayDiff(period.start, bar.end) >= 0;
 }
 
-/* ------------------------------- text bars ------------------------------- */
-
 const BAR_DONE = "█";
-const BAR_LEFT = "▒";
-const BAR_NONE = "·";
-
-/**
- * A bar drawn with block characters.
- *
- * This is the part that survives being pasted anywhere — a spreadsheet cell,
- * an email, a chat message — without needing colour or conditional formatting.
- */
-export function textBar(bar: GanttBar, range: GanttRange, width: number): string {
-  if (!bar.start || !bar.end || width < 1) return "";
-  const span = Math.max(1, dayDiff(range.start, range.end) + 1);
-  const first = Math.round((dayDiff(range.start, bar.start) / span) * width);
-  const last = Math.round((dayDiff(range.start, bar.end) + 1) / span * width);
-  const filled = Math.max(first + 1, last);
-  const done = bar.progress === null ? filled : first + Math.round(((filled - first) * bar.progress) / 100);
-
-  let out = "";
-  for (let i = 0; i < width; i++) {
-    if (i < first || i >= filled) out += BAR_NONE;
-    else out += i < done ? BAR_DONE : BAR_LEFT;
-  }
-  return out;
-}
 
 /* ------------------------------- the sheet ------------------------------- */
 
@@ -280,78 +282,62 @@ export function textBar(bar: GanttBar, range: GanttRange, width: number): string
  * block where the task is running. Pasting that into Excel gives a chart you
  * can see straight away, and conditional formatting turns it into colour.
  */
-export function buildGanttGrid(doc: WbsDoc, rows: WbsRow[]): SheetGrid {
+export function buildGanttGrid(doc: WbsDoc): SheetGrid {
   const settings = doc.gantt;
+  const rows = flatten(doc);
   const range = ganttRange(rows, settings);
   const { periods } = buildPeriods(range.start, range.end, settings.scale);
   const bars = ganttBars(doc, rows, range);
 
-  const extra = settings.showFields
-    .map((id) => doc.fields.find((field) => field.id === id))
-    .filter((field): field is WbsField => Boolean(field));
-
-  const startField = doc.fields.find((field) => field.id === settings.startFieldId);
-  const endField = doc.fields.find((field) => field.id === settings.endFieldId);
-  const progressField = settings.progressFieldId
-    ? doc.fields.find((field) => field.id === settings.progressFieldId)
-    : undefined;
+  // The same table as the WBS sheet, so the structure is identical wherever
+  // the plan is opened — the timeline is columns appended to it, not a
+  // different layout with the same data in it.
+  const base = buildGrid(doc);
 
   const columns: GridColumn[] = [
-    { key: "code", label: "WBS", width: 12, align: "left" },
-    { key: "name", label: "Task", width: 34, align: "left" },
-    ...extra.map((field) => ({
-      key: field.id,
-      label: field.label,
-      width: field.width,
-      align: (field.type === "text" || field.type === "select" ? "left" : "right") as "left" | "right",
+    ...base.columns,
+    ...periods.map((period) => ({
+      key: `p-${period.key}`,
+      label: period.label,
+      width: 5,
+      align: "left" as const,
     })),
-    { key: "start", label: startField?.label ?? "Start", width: 12, align: "right" },
-    { key: "finish", label: endField?.label ?? "Finish", width: 12, align: "right" },
-    { key: "days", label: "Days", width: 8, align: "right" },
   ];
-  if (progressField) {
-    columns.push({ key: "progress", label: progressField.label, width: 11, align: "right" });
-  }
-  if (settings.showTextBar) {
-    columns.push({ key: "bar", label: "Timeline", width: Math.max(12, settings.barWidth), align: "left" });
-  }
-  for (const period of periods) {
-    columns.push({ key: `p-${period.key}`, label: period.label, width: 5, align: "left" });
-  }
 
-  const body: GridCell[][] = bars.map((bar) => {
-    const row = bar.row;
-    const indent = doc.settings.nameLayout === "indent" ? doc.settings.indentUnit.repeat(row.level - 1) : "";
-
-    const cells: GridCell[] = [
-      textCell(row.code),
-      textCell(`${indent}${row.name}`),
-      ...extra.map((field) => valueCell(row.values[field.id] ?? null, field, doc)),
-      startField ? valueCell(bar.start, startField, doc) : textCell(bar.start ?? "", "right"),
-      endField ? valueCell(bar.end, endField, doc) : textCell(bar.end ?? "", "right"),
-      bar.days > 0
-        ? { text: String(bar.days), value: bar.days, kind: "number" as const, align: "right" as const }
-        : textCell("", "right"),
+  const body: GridCell[][] = base.rows.map((cells, index) => {
+    const bar = bars[index];
+    return [
+      ...cells,
+      ...periods.map((period) =>
+        textCell(bar && coversPeriod(bar, period) ? BAR_DONE : ""),
+      ),
     ];
-
-    if (progressField) {
-      cells.push(valueCell(row.values[progressField.id] ?? null, progressField, doc));
-    }
-    if (settings.showTextBar) {
-      cells.push(textCell(textBar(bar, range, settings.barWidth)));
-    }
-    for (const period of periods) {
-      cells.push(textCell(coversPeriod(bar, period) ? BAR_DONE : ""));
-    }
-    return cells;
   });
 
-  return {
-    columns,
-    rows: body,
-    outline: doc.settings.groupRows ? bars.map((bar) => Math.max(0, bar.row.level - 1)) : bars.map(() => 0),
-    source: bars.map((bar) => bar.row),
-  };
+  return { columns, rows: body, outline: base.outline, source: base.source };
+}
+
+/**
+ * Moves or resizes a bar by whole days.
+ *
+ * Dragging a bar shifts both ends; dragging an edge moves one and never lets
+ * it cross the other, so a task cannot come out finishing before it starts.
+ */
+export function shiftBar(
+  bar: GanttBar,
+  days: number,
+  edge: "move" | "start" | "end",
+): { start: string; end: string } | null {
+  if (!bar.start || !bar.end || days === 0) return null;
+  if (edge === "move") {
+    return { start: addDays(bar.start, days), end: addDays(bar.end, days) };
+  }
+  if (edge === "start") {
+    const start = addDays(bar.start, days);
+    return { start: dayDiff(start, bar.end) < 0 ? bar.end : start, end: bar.end };
+  }
+  const end = addDays(bar.end, days);
+  return { start: bar.start, end: dayDiff(bar.start, end) < 0 ? bar.start : end };
 }
 
 /** A one-line summary for the heading above the chart. */

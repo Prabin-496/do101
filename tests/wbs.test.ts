@@ -6,7 +6,9 @@ import {
   duplicateTask,
   flatten,
   indentTask,
+  isDescendant,
   maxDepth,
+  moveTaskTo,
   moveTask,
   newTask,
   outdentTask,
@@ -22,13 +24,27 @@ import { buildGrid, buildSummaryGrid, columnLetter, csvSafe, gridToCsv } from "@
 import { docToJson, parseDoc, parseOutline, parseOutlineLines, tableToTasks } from "@/lib/wbs/import";
 import { starterTasks, TEMPLATES, templateTasks } from "@/lib/wbs/templates";
 
+/**
+ * A document that states its own environment rather than inheriting whatever
+ * the product currently defaults to: the optional columns are shown and the
+ * structure columns are on, so these tests keep testing behaviour when the
+ * defaults are retuned. The defaults themselves are covered further down.
+ */
 function doc(tasks: WbsTask[], overrides: Partial<WbsDoc["settings"]> = {}): WbsDoc {
   return {
     version: 1,
-    settings: { ...defaultSettings(), ...overrides },
+    settings: {
+      ...defaultSettings(),
+      showLevel: true,
+      showType: true,
+      weightFieldId: "hours",
+      ...overrides,
+    },
     chart: defaultChart(),
     gantt: defaultGantt(),
-    fields: defaultFields(),
+    fields: defaultFields().map((field) =>
+      ["cost", "hours", "status"].includes(field.id) ? { ...field, visible: true } : field,
+    ),
     tasks,
   };
 }
@@ -381,7 +397,7 @@ describe("spreadsheet import", () => {
 
   it("rebuilds the hierarchy from one column per level", () => {
     const rows = [
-      ["Level 1", "Level 2", "Owner"],
+      ["Level 1", "Level 2", "Task Owner"],
       ["Planning", "", "Ada"],
       ["", "Scope", "Bo"],
       ["", "Budget", "Cy"],
@@ -497,5 +513,126 @@ describe("templates", () => {
 
   it("opens with a small starter breakdown", () => {
     expect(starterTasks()).toHaveLength(3);
+  });
+});
+
+describe("the default sheet", () => {
+  /** The product defaults, unlike doc() above, which sets its own. */
+  function plain(tasks: WbsTask[]): WbsDoc {
+    return {
+      version: 1,
+      settings: defaultSettings(),
+      chart: defaultChart(),
+      gantt: defaultGantt(),
+      fields: defaultFields(),
+      tasks,
+    };
+  }
+
+  function dated(): WbsTask[] {
+    const a = { ...newTask("Requirements"), values: { start: "2026-03-02", finish: "2026-03-13", progress: 100 } };
+    const b = { ...newTask("Stakeholders"), values: { start: "2026-03-16", finish: "2026-03-27", progress: 0 } };
+    return [{ ...newTask("Initiation"), children: [a, b] }];
+  }
+
+  it("arrives in the order a project WBS is expected in", () => {
+    const grid = buildGrid(plain(dated()));
+    expect(grid.columns.map((column) => column.label)).toEqual([
+      "WBS Number",
+      "Task Title",
+      "Task Owner",
+      "Start Date",
+      "Due Date",
+      "Duration",
+      "% Complete",
+      "Timeline/Weeks",
+    ]);
+  });
+
+  it("keeps cost, effort and status available but out of the way", () => {
+    const hidden = defaultFields().filter((field) => !field.visible).map((field) => field.id);
+    expect(hidden).toContain("cost");
+    expect(hidden).toContain("hours");
+    expect(hidden).toContain("status");
+  });
+
+  it("counts duration in whole days, both ends included", () => {
+    const rows = flatten(plain(dated()));
+    expect(rows[1].values.duration).toBe(12);
+  });
+
+  it("spans a summary task's duration across its children", () => {
+    const rows = flatten(plain(dated()));
+    expect(rows[0].values.duration).toBe(26);
+  });
+
+  it("leaves duration empty when a task has no dates", () => {
+    const rows = flatten(plain([newTask("Someday")]));
+    expect(rows[0].values.duration).toBe(null);
+  });
+
+  it("draws a timeline bar with one character per week", () => {
+    const rows = flatten(plain(dated()));
+    const bar = rows[1].values.timeline as string;
+    expect(bar).toHaveLength(4);
+    expect(bar).toMatch(/^[█▒·]+$/);
+  });
+
+  it("lines every row's bar up on the same weeks", () => {
+    const rows = flatten(plain(dated()));
+    const lengths = new Set(rows.map((row) => String(row.values.timeline ?? "").length));
+    expect(lengths.size).toBe(1);
+  });
+
+  it("shows progress in the bar: done weeks are full blocks", () => {
+    const rows = flatten(plain(dated()));
+    expect(String(rows[1].values.timeline)).toContain("█");
+    expect(String(rows[2].values.timeline)).not.toContain("█");
+  });
+
+  it("derives the computed columns rather than storing them", () => {
+    const tasks = dated();
+    const rows = flatten(plain(tasks));
+    expect(rows[1].own.duration).toBeUndefined();
+    expect(rows[1].values.duration).toBe(12);
+  });
+
+  it("numbers the hierarchy in the WBS Number column", () => {
+    const grid = buildGrid(plain(dated()));
+    const codes = grid.rows.map((row) => row[0].text);
+    expect(codes).toEqual(["1", "1.1", "1.2"]);
+  });
+});
+
+describe("dragging a row somewhere else", () => {
+  it("drops a task after the row it was dropped on, at that row's level", () => {
+    const tasks = tree();
+    const moved = moveTaskTo(tasks, tasks[1].id, tasks[0].children[0].id, "after");
+    expect(moved).toHaveLength(1);
+    expect(moved[0].children.map((task) => task.name)).toEqual(["Scope", "Delivery", "Budget"]);
+  });
+
+  it("drops a task before the row it was dropped on", () => {
+    const tasks = tree();
+    const moved = moveTaskTo(tasks, tasks[1].id, tasks[0].children[0].id, "before");
+    expect(moved[0].children.map((task) => task.name)).toEqual(["Delivery", "Scope", "Budget"]);
+  });
+
+  it("carries the children along with the row", () => {
+    const tasks = tree();
+    const moved = moveTaskTo(tasks, tasks[0].id, tasks[1].id, "after");
+    expect(moved.map((task) => task.name)).toEqual(["Delivery", "Planning"]);
+    expect(moved[1].children).toHaveLength(2);
+  });
+
+  it("refuses to drop a task inside itself", () => {
+    const tasks = tree();
+    expect(moveTaskTo(tasks, tasks[0].id, tasks[0].children[1].id, "after")).toEqual(tasks);
+    expect(isDescendant(tasks, tasks[0].id, tasks[0].children[1].id)).toBe(true);
+  });
+
+  it("does nothing when a row is dropped on itself", () => {
+    const tasks = tree();
+    expect(moveTaskTo(tasks, tasks[0].id, tasks[0].id, "after")).toEqual(tasks);
   });
 });

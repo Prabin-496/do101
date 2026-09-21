@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import * as XLSX from "xlsx";
+import { unzipSync } from "fflate";
+import { XMLParser } from "fast-xml-parser";
+import { enhanceXlsx } from "@/lib/wbs/office";
 import { defaultChart, defaultFields, defaultGantt, defaultSettings } from "@/lib/wbs/fields";
 import { flatten, newTask, type WbsDoc, type WbsTask } from "@/lib/wbs/model";
 import { tableToTasks } from "@/lib/wbs/import";
@@ -23,10 +26,20 @@ function sample(overrides: Partial<WbsDoc["settings"]> = {}): WbsDoc {
   const planning: WbsTask = { ...newTask("Planning"), description: "Everything before build", children: [scope, budget] };
   return {
     version: 1,
-    settings: { ...defaultSettings(), projectName: "Bridge rebuild", ...overrides },
+    // States its own columns rather than inheriting the product defaults, so
+    // these tests keep checking the workbook when the defaults are retuned.
+    settings: {
+      ...defaultSettings(),
+      projectName: "Bridge rebuild",
+      showLevel: true,
+      showType: true,
+      ...overrides,
+    },
     chart: defaultChart(),
     gantt: defaultGantt(),
-    fields: defaultFields(),
+    fields: defaultFields().map((field) =>
+      ["cost", "hours", "status"].includes(field.id) ? { ...field, visible: true } : field,
+    ),
     tasks: [planning, { ...newTask("Delivery"), values: { cost: 50 } }],
   };
 }
@@ -64,7 +77,7 @@ describe("the exported workbook", () => {
   it("writes a header row and one row per task", async () => {
     const sheet = (await read(sample())).Sheets.WBS;
     const rows = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 });
-    expect(rows[0]).toContain("WBS");
+    expect(rows[0]).toContain("WBS Number");
     expect(rows).toHaveLength(5);
   });
 
@@ -107,7 +120,7 @@ describe("the exported workbook", () => {
 
   it("uses MIN for a start date that rolls up to the earliest child", async () => {
     const sheet = (await read(sample())).Sheets.WBS;
-    const letter = columnOf(sheet, "Start");
+    const letter = columnOf(sheet, "Start Date");
     const cell = sheet[`${letter}2`] as XLSX.CellObject;
     expect(cell.f).toBe(`MIN(${letter}3,${letter}4)`);
     expect(cell.w).toBe("2026-01-02");
@@ -202,16 +215,98 @@ describe("the Gantt sheet", () => {
     const sheet = (await read(sample())).Sheets.Gantt;
     // raw:false asks for the formatted text, which is what Excel shows.
     const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { raw: false });
-    const scope = rows.find((row) => String(row.Task).trim() === "Scope")!;
-    expect(scope.Days).toBe("5");
-    expect(scope.Start).toBe("2026-01-05");
+    const scope = rows.find((row) => String(row["Task Title"]).trim() === "Scope")!;
+    expect(scope.Duration).toBe("5");
+    expect(scope["Start Date"]).toBe("2026-01-05");
   });
 
   it("marks a block in each period the task is running", async () => {
     const sheet = (await read(sample())).Sheets.Gantt;
     const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
-    const scope = rows.find((row) => String(row.Task).trim() === "Scope")!;
+    const scope = rows.find((row) => String(row["Task Title"]).trim() === "Scope")!;
     const blocks = Object.values(scope).filter((value) => value === "█");
     expect(blocks.length).toBeGreaterThan(0);
+  });
+});
+
+describe("the Office polish", () => {
+  async function parts(doc: WbsDoc): Promise<Record<string, string>> {
+    const blob = await buildWorkbook(doc);
+    const files = unzipSync(new Uint8Array(await blob.arrayBuffer()));
+    const out: Record<string, string> = {};
+    for (const [name, bytes] of Object.entries(files)) {
+      out[name] = new TextDecoder().decode(bytes);
+    }
+    return out;
+  }
+
+  it("still opens as a workbook after the extras are added", async () => {
+    const workbook = await read(sample());
+    expect(workbook.SheetNames).toContain("WBS");
+    const rows = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets.WBS, { header: 1 });
+    expect(rows).toHaveLength(5);
+  });
+
+  it("leaves every part well-formed XML", async () => {
+    const files = await parts(sample());
+    const parser = new XMLParser({ ignoreAttributes: false });
+    for (const [name, xml] of Object.entries(files)) {
+      if (!name.endsWith(".xml") && !name.endsWith(".rels")) continue;
+      expect(() => parser.parse(xml), name).not.toThrow();
+    }
+  });
+
+  it("freezes the headings and the first two columns", async () => {
+    const files = await parts(sample());
+    const sheet = files["xl/worksheets/sheet1.xml"];
+    expect(sheet).toContain('state="frozen"');
+    expect(sheet).toContain('xSplit="2"');
+    expect(sheet).toContain('ySplit="1"');
+  });
+
+  it("colours the timeline blocks with a conditional format", async () => {
+    const files = await parts(sample());
+    const sheet = files["xl/worksheets/sheet1.xml"];
+    expect(sheet).toContain("<conditionalFormatting");
+    expect(sheet).toContain('type="containsText"');
+    expect(sheet).toContain("█");
+    expect(files["xl/styles.xml"]).toContain('<dxfs count="2">');
+  });
+
+  it("puts a data bar down the % Complete column", async () => {
+    const files = await parts(sample());
+    expect(files["xl/worksheets/sheet1.xml"]).toContain('type="dataBar"');
+  });
+
+  it("sets the page up to print across a landscape sheet", async () => {
+    const sheet = (await parts(sample()))["xl/worksheets/sheet1.xml"];
+    expect(sheet).toContain('orientation="landscape"');
+    expect(sheet).toContain('fitToWidth="1"');
+    expect(sheet).toContain("<pageMargins");
+  });
+
+  it("keeps the schema order: formatting after the data, before ignoredErrors", async () => {
+    const sheet = (await parts(sample()))["xl/worksheets/sheet1.xml"];
+    expect(sheet.indexOf("</sheetData>")).toBeLessThan(sheet.indexOf("<conditionalFormatting"));
+    expect(sheet.indexOf("<conditionalFormatting")).toBeLessThan(sheet.indexOf("<pageMargins"));
+    expect(sheet.indexOf("<pageSetup")).toBeLessThan(sheet.indexOf("<ignoredErrors"));
+  });
+
+  it("polishes the Gantt sheet as well as the WBS sheet", async () => {
+    const files = await parts(sample());
+    expect(files["xl/worksheets/sheet3.xml"]).toContain("<conditionalFormatting");
+  });
+
+  it("can be turned off, and then writes a plain workbook", async () => {
+    const files = await parts(sample({ officeFormatting: false }));
+    expect(files["xl/worksheets/sheet1.xml"]).not.toContain("<conditionalFormatting");
+    expect(files["xl/worksheets/sheet1.xml"]).not.toContain("frozen");
+  });
+
+  it("hands back the plain workbook rather than a broken one", () => {
+    const rubbish = new Uint8Array([1, 2, 3, 4]);
+    expect(enhanceXlsx(rubbish, [
+      { sheet: "WBS", freezeColumns: 2, freezeRows: 1, rows: 3, barColumns: [7], percentColumn: 6, landscape: true },
+    ])).toBe(rubbish);
   });
 });

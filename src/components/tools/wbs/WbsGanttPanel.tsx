@@ -10,7 +10,7 @@ import { track } from "@/lib/analytics";
 import { buildGanttGrid } from "@/lib/wbs/gantt";
 import { copyGridForSpreadsheet } from "@/lib/wbs/clipboard";
 import { gridToCsv } from "@/lib/wbs/grid";
-import { flatten, type GanttScale, type GanttSettings, type WbsDoc, type WbsRow } from "@/lib/wbs/model";
+import type { GanttScale, GanttSettings, WbsDoc, WbsRow } from "@/lib/wbs/model";
 import { buildWorkbook, workbookFilename } from "@/lib/wbs/workbook";
 import { WbsGantt } from "./WbsGantt";
 
@@ -36,6 +36,7 @@ export function WbsGanttPanel({
   selectedId,
   onSelect,
   onGantt,
+  onDates,
   height = 460,
 }: {
   doc: WbsDoc;
@@ -43,6 +44,7 @@ export function WbsGanttPanel({
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onGantt: (changes: Partial<GanttSettings>) => void;
+  onDates: (id: string, dates: { start: string; end: string }) => void;
   height?: number;
 }) {
   const [busy, setBusy] = React.useState(false);
@@ -51,7 +53,7 @@ export function WbsGanttPanel({
 
   // The view respects collapsed branches; the copy and the download do not,
   // matching the spreadsheet export — a folded branch is still part of the plan.
-  const grid = React.useMemo(() => buildGanttGrid(doc, flatten(doc)), [doc]);
+  const grid = React.useMemo(() => buildGanttGrid(doc), [doc]);
   const dateFields = doc.fields.filter((field) => field.type === "date");
   const percentFields = doc.fields.filter((field) => field.type === "percent");
   const periods = grid.columns.filter((column) => column.key.startsWith("p-")).length;
@@ -84,7 +86,14 @@ export function WbsGanttPanel({
 
   return (
     <div className="space-y-4">
-      <WbsGantt doc={doc} rows={rows} selectedId={selectedId} onSelect={onSelect} height={height} />
+      <WbsGantt
+        doc={doc}
+        rows={rows}
+        selectedId={selectedId}
+        onSelect={onSelect}
+        onDates={onDates}
+        height={height}
+      />
 
       <div className="flex flex-wrap gap-2">
         <Button onClick={copy}>{copied ? "Copied — paste into Excel" : "Copy for Excel"}</Button>
@@ -245,63 +254,12 @@ export function WbsGanttPanel({
             onChange={(value) => onGantt({ includeInWorkbook: value })}
             label="Gantt sheet in the Excel download"
           />
-          <Toggle
-            checked={doc.gantt.showTextBar}
-            onChange={(value) => onGantt({ showTextBar: value })}
-            label="A bar drawn with blocks"
-            description="One extra column that reads as a bar wherever it is pasted, with no formatting needed."
-          />
-          <div>
-            <Label htmlFor="wbs-gantt-barwidth" hint="characters">
-              Block bar width
-            </Label>
-            <Input
-              id="wbs-gantt-barwidth"
-              type="number"
-              min={8}
-              max={80}
-              value={doc.gantt.barWidth}
-              onChange={(event) =>
-                onGantt({ barWidth: Math.min(80, Math.max(8, Number(event.target.value) || 28)) })
-              }
-            />
-          </div>
         </div>
 
-        <div className="mt-4">
-          <Label>Columns beside the task name</Label>
-          <div className="flex flex-wrap gap-2">
-            {doc.fields.map((field) => {
-              const on = doc.gantt.showFields.includes(field.id);
-              return (
-                <button
-                  key={field.id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() =>
-                    onGantt({
-                      showFields: on
-                        ? doc.gantt.showFields.filter((id) => id !== field.id)
-                        : [...doc.gantt.showFields, field.id],
-                    })
-                  }
-                  className={cn(
-                    "rounded-xl border-2 px-3 py-1.5 text-xs font-extrabold",
-                    on
-                      ? "border-[var(--grass)] bg-[var(--grass-soft)]"
-                      : "border-[var(--border)] hover:bg-[var(--panel)]",
-                  )}
-                >
-                  {field.label}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-2 text-xs font-semibold text-[var(--muted)]">
-            {periods} {doc.gantt.scale} column{periods === 1 ? "" : "s"} in the copy and the
-            download.
-          </p>
-        </div>
+        <p className="mt-4 text-xs font-semibold text-[var(--muted)]">
+          The Gantt sheet leads with the same columns as the spreadsheet, then one column per{" "}
+          {doc.gantt.scale} — {periods} of them in the copy and the download.
+        </p>
       </Card>
     </div>
   );

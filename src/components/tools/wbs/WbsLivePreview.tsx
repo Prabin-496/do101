@@ -10,7 +10,6 @@ import { WbsChart } from "./WbsChart";
 import { copyGridForSpreadsheet } from "@/lib/wbs/clipboard";
 import { buildGanttGrid, describeRange, ganttRange } from "@/lib/wbs/gantt";
 import { buildGrid } from "@/lib/wbs/grid";
-import { flatten } from "@/lib/wbs/model";
 import { WbsGantt } from "./WbsGantt";
 import { WbsSheetPreview } from "./WbsSheetPreview";
 
@@ -38,6 +37,7 @@ export function WbsLivePreview({
   onAddChild,
   onAddSibling,
   onDelete,
+  onDates,
 }: {
   doc: WbsDoc;
   rows: WbsRow[];
@@ -53,6 +53,7 @@ export function WbsLivePreview({
   onAddChild: (id: string) => void;
   onAddSibling: (id: string) => void;
   onDelete: (id: string) => void;
+  onDates: (id: string, dates: { start: string; end: string }) => void;
 }) {
   const [copied, setCopied] = React.useState(false);
   const [failed, setFailed] = React.useState(false);
@@ -61,7 +62,7 @@ export function WbsLivePreview({
   const grid = React.useMemo(() => buildGrid(doc), [doc]);
   // The whole plan, not only what is on screen — a folded branch is still
   // part of it, which is how the spreadsheet export behaves too.
-  const ganttGrid = React.useMemo(() => buildGanttGrid(doc, flatten(doc)), [doc]);
+  const ganttGrid = React.useMemo(() => buildGanttGrid(doc), [doc]);
   const all: { id: PreviewKind; label: string }[] = [
     { id: "chart", label: "Chart" },
     { id: "gantt", label: "Gantt" },
@@ -132,7 +133,14 @@ export function WbsLivePreview({
       )}
 
       {showing === "gantt" ? (
-        <WbsGantt doc={doc} rows={rows} selectedId={selectedId} onSelect={onSelect} height={460} />
+        <WbsGantt
+          doc={doc}
+          rows={rows}
+          selectedId={selectedId}
+          onSelect={onSelect}
+          onDates={onDates}
+          height={460}
+        />
       ) : showing === "chart" ? (
         <WbsChart
           chart={chart}

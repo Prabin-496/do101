@@ -102,7 +102,8 @@ export function parseOutline(text: string): WbsTask[] {
 /* ----------------------------- spreadsheets ----------------------------- */
 
 const CODE_HEADER = /^(wbs|wbs\s*(code|id|no|number|#)|code|id|item|ref)$/i;
-const NAME_HEADER = /^(task|task\s*name|name|activity|work\s*package|element|deliverable|title|description)$/i;
+const NAME_HEADER =
+  /^(task|task\s*(name|title)|wbs\s*(name|title)|name|title|activity|work\s*package|element|deliverable|description)$/i;
 const LEVEL_HEADER = /^(level|depth|tier|outline\s*level)$/i;
 const LEVEL_COLUMN = /^level\s*(\d+)$/i;
 const CODE_VALUE = /^[A-Za-z]*[-_.]?\d+([.\-]\d+)*$/;

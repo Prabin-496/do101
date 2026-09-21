@@ -45,13 +45,45 @@ export const FORMULA_ROLLUPS: Record<string, string> = {
   average: "AVERAGE",
 };
 
+/**
+ * The columns a project WBS is expected to arrive in, in order:
+ * WBS Number | Task Title | Task Owner | Start Date | Due Date | Duration |
+ * % Complete | Timeline/Weeks.
+ *
+ * The first two are structural and live in the sheet settings; the rest are
+ * these. Everything else a plan might want — cost, effort, status, risk — is
+ * here too but starts hidden, one click away in the Columns tab.
+ */
 export const DEFAULT_FIELDS: WbsField[] = [
-  { id: "owner", label: "Owner", type: "text", rollup: "none", width: 16, visible: true, builtin: true },
-  { id: "start", label: "Start", type: "date", rollup: "min", width: 12, visible: true, builtin: true },
-  { id: "finish", label: "Finish", type: "date", rollup: "max", width: 12, visible: true, builtin: true },
-  { id: "hours", label: "Effort (h)", type: "number", rollup: "sum", width: 11, visible: true, builtin: true },
-  { id: "cost", label: "Cost", type: "currency", rollup: "sum", width: 13, visible: true, builtin: true },
+  { id: "owner", label: "Task Owner", type: "text", rollup: "none", width: 16, visible: true, builtin: true },
+  { id: "start", label: "Start Date", type: "date", rollup: "min", width: 12, visible: true, builtin: true },
+  { id: "finish", label: "Due Date", type: "date", rollup: "max", width: 12, visible: true, builtin: true },
+  {
+    id: "duration",
+    label: "Duration",
+    type: "number",
+    rollup: "none",
+    computed: { kind: "duration", from: "start", to: "finish" },
+    // Whole days, so an integer format: Excel renders 5 as "5." under the
+    // general number format this tool uses elsewhere.
+    format: "#,##0",
+    width: 10,
+    visible: true,
+    builtin: true,
+  },
   { id: "progress", label: "% Complete", type: "percent", rollup: "weighted", width: 12, visible: true, builtin: true },
+  {
+    id: "timeline",
+    label: "Timeline/Weeks",
+    type: "text",
+    rollup: "none",
+    computed: { kind: "timeline", from: "start", to: "finish", progress: "progress" },
+    width: 30,
+    visible: true,
+    builtin: true,
+  },
+  { id: "hours", label: "Effort (h)", type: "number", rollup: "sum", width: 11, visible: false, builtin: true },
+  { id: "cost", label: "Cost", type: "currency", rollup: "sum", width: 13, visible: false, builtin: true },
   {
     id: "status",
     label: "Status",
@@ -59,7 +91,7 @@ export const DEFAULT_FIELDS: WbsField[] = [
     rollup: "none",
     options: ["Not started", "In progress", "Blocked", "Done"],
     width: 14,
-    visible: true,
+    visible: false,
     builtin: true,
   },
   { id: "deliverable", label: "Deliverable", type: "text", rollup: "none", width: 24, visible: false, builtin: true },
@@ -80,9 +112,9 @@ export const DEFAULT_SETTINGS: WbsSettings = {
   projectName: "New project",
   numbering: { style: "decimal", prefix: "", separator: ".", pad: 0, startAt: 1 },
   showCode: true,
-  showLevel: true,
+  showLevel: false,
   showParent: false,
-  showType: true,
+  showType: false,
   nameLayout: "indent",
   indentUnit: "    ",
   currencySymbol: "$",
@@ -91,7 +123,10 @@ export const DEFAULT_SETTINGS: WbsSettings = {
   groupRows: true,
   includeDictionary: true,
   includeSummary: true,
-  weightFieldId: "hours",
+  officeFormatting: true,
+  codeWidth: 120,
+  nameWidth: 280,
+  weightFieldId: null,
 };
 
 export const DEFAULT_CHART: ChartSettings = {
@@ -122,18 +157,15 @@ export const DEFAULT_GANTT: GanttSettings = {
   showProgress: true,
   showToday: true,
   showWeekends: true,
-  showTextBar: true,
-  barWidth: 28,
   colourBy: "level",
   colourFieldId: "status",
   rangeStart: null,
   rangeEnd: null,
-  showFields: ["owner"],
   includeInWorkbook: true,
 };
 
 export function defaultGantt(): GanttSettings {
-  return { ...DEFAULT_GANTT, showFields: [...DEFAULT_GANTT.showFields] };
+  return { ...DEFAULT_GANTT };
 }
 
 export function defaultChart(): ChartSettings {
@@ -141,7 +173,11 @@ export function defaultChart(): ChartSettings {
 }
 
 export function defaultFields(): WbsField[] {
-  return DEFAULT_FIELDS.map((field) => ({ ...field, options: field.options ? [...field.options] : undefined }));
+  return DEFAULT_FIELDS.map((field) => ({
+    ...field,
+    options: field.options ? [...field.options] : undefined,
+    computed: field.computed ? { ...field.computed } : undefined,
+  }));
 }
 
 export function defaultSettings(): WbsSettings {
@@ -229,6 +265,7 @@ export function formatValue(
  * written as a fraction, because Excel's own % format multiplies by 100.
  */
 export function excelNumberFormat(field: WbsField, settings: WbsSettings): string | undefined {
+  if (field.format) return field.format;
   switch (field.type) {
     case "currency":
       return `"${settings.currencySymbol.replace(/"/g, "")}"#,##0.00`;

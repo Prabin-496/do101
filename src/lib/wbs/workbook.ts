@@ -11,7 +11,7 @@
 import type { GridCell, SheetGrid } from "./grid";
 import { buildDictionaryGrid, buildGrid, buildSummaryGrid } from "./grid";
 import { buildGanttGrid } from "./gantt";
-import { flatten } from "./model";
+import { enhanceXlsx, type SheetEnhancement } from "./office";
 import type { WbsDoc } from "./model";
 
 export const XLSX_MIME =
@@ -65,6 +65,30 @@ function toSheet(XLSX: SheetJs, grid: SheetGrid, withFilter: boolean) {
   return sheet;
 }
 
+/**
+ * What Excel should do with a sheet once it is open: hold the headings and
+ * the first two columns still, colour the timeline, and print across the page.
+ */
+function planFor(name: string, grid: SheetGrid): SheetEnhancement {
+  const barColumns = grid.columns
+    .map((column, index) => ({ column, index }))
+    .filter(({ column }) => column.key === "timeline" || column.key.startsWith("p-"))
+    .map(({ index }) => index);
+  const percentColumn = grid.columns.findIndex((column) => column.key === "progress");
+  // The WBS Number and Task Title columns, when they are there to freeze.
+  const frozen = grid.columns.filter((column) => column.key === "code" || column.key === "name").length;
+
+  return {
+    sheet: name,
+    freezeColumns: frozen,
+    freezeRows: 1,
+    rows: grid.rows.length,
+    barColumns,
+    percentColumn: percentColumn >= 0 ? percentColumn : null,
+    landscape: true,
+  };
+}
+
 export function workbookFilename(doc: WbsDoc, extension: string): string {
   const slug =
     doc.settings.projectName
@@ -79,8 +103,11 @@ export function workbookFilename(doc: WbsDoc, extension: string): string {
 export async function buildWorkbook(doc: WbsDoc): Promise<Blob> {
   const XLSX = await import("xlsx");
   const workbook = XLSX.utils.book_new();
+  const plans: SheetEnhancement[] = [];
 
-  XLSX.utils.book_append_sheet(workbook, toSheet(XLSX, buildGrid(doc), true), "WBS");
+  const sheet = buildGrid(doc);
+  XLSX.utils.book_append_sheet(workbook, toSheet(XLSX, sheet, true), "WBS");
+  plans.push(planFor("WBS", sheet));
 
   if (doc.settings.includeDictionary) {
     XLSX.utils.book_append_sheet(
@@ -92,11 +119,9 @@ export async function buildWorkbook(doc: WbsDoc): Promise<Blob> {
   if (doc.gantt.includeInWorkbook) {
     // The Gantt sheet carries the dates as real dates and a block per period,
     // so a conditional format turns the blocks into bars in one step.
-    XLSX.utils.book_append_sheet(
-      workbook,
-      toSheet(XLSX, buildGanttGrid(doc, flatten(doc)), true),
-      "Gantt",
-    );
+    const gantt = buildGanttGrid(doc);
+    XLSX.utils.book_append_sheet(workbook, toSheet(XLSX, gantt, true), "Gantt");
+    plans.push(planFor("Gantt", gantt));
   }
   if (doc.settings.includeSummary) {
     XLSX.utils.book_append_sheet(
@@ -107,7 +132,10 @@ export async function buildWorkbook(doc: WbsDoc): Promise<Blob> {
   }
 
   const output = XLSX.write(workbook, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
-  return new Blob([output], { type: XLSX_MIME });
+  const polished = doc.settings.officeFormatting
+    ? enhanceXlsx(new Uint8Array(output), plans)
+    : new Uint8Array(output);
+  return new Blob([polished], { type: XLSX_MIME });
 }
 
 /** Reads the first sheet of an uploaded spreadsheet as a grid of strings. */

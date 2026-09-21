@@ -104,7 +104,7 @@ export function buildGrid(doc: WbsDoc): SheetGrid {
   const depth = Math.max(1, maxDepth(doc.tasks));
 
   const columns: GridColumn[] = [];
-  if (settings.showCode) columns.push({ key: "code", label: "WBS", width: 14, align: "left" });
+  if (settings.showCode) columns.push({ key: "code", label: "WBS Number", width: 14, align: "left" });
   if (settings.showLevel) columns.push({ key: "level", label: "Level", width: 7, align: "right" });
   if (settings.showParent) columns.push({ key: "parent", label: "Parent", width: 12, align: "left" });
 
@@ -116,7 +116,7 @@ export function buildGrid(doc: WbsDoc): SheetGrid {
     }
   } else {
     nameColumnIndexes.push(columns.length);
-    columns.push({ key: "name", label: "Task", width: 38, align: "left" });
+    columns.push({ key: "name", label: "Task Title", width: 38, align: "left" });
   }
 
   if (settings.showType) columns.push({ key: "type", label: "Type", width: 14, align: "left" });

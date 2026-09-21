@@ -7,7 +7,9 @@
  * parsed by the same code that handles a pasted one.
  */
 
-import type { WbsDoc, WbsTask } from "./model";
+import type { FieldValue, WbsDoc, WbsTask } from "./model";
+import { newTask } from "./model";
+import { addDays, todayIso, weekday } from "./gantt";
 import { parseOutline } from "./import";
 import { defaultChart, defaultFields, defaultGantt, defaultSettings } from "./fields";
 
@@ -216,16 +218,55 @@ export function templateTasks(id: string): WbsTask[] {
   return template ? parseOutline(template.outline) : [];
 }
 
-/** The document a first-time visitor sees, so the tool is never an empty box. */
-export function starterTasks(): WbsTask[] {
-  return parseOutline(`Planning
-  Define scope
-  Agree budget
-Delivery
-  Do the work
-  Review
-Close
-  Hand over`);
+/**
+ * The document a first-time visitor sees.
+ *
+ * A small, conventional project breakdown with dates already on the work
+ * packages, so the sheet opens looking like the thing it is: numbered rows,
+ * durations that count themselves, and a timeline. Dates are anchored to the
+ * Monday of the current week rather than written down, so the starter never
+ * arrives looking out of date.
+ */
+export function starterTasks(from: string = mondayOfThisWeek()): WbsTask[] {
+  const week = (n: number, days: number, values: Record<string, FieldValue> = {}) => ({
+    start: addDays(from, n * 7),
+    finish: addDays(from, n * 7 + days - 1),
+    ...values,
+  });
+
+  const leaf = (name: string, values: Record<string, FieldValue>): WbsTask => ({
+    ...newTask(name, values),
+  });
+
+  return [
+    {
+      ...newTask("Project Initiation"),
+      children: [
+        {
+          ...newTask("Project Planning"),
+          children: [
+            leaf("Requirements Gathering", week(0, 12, { progress: 100 })),
+            leaf("Stakeholder Analysis", week(2, 5, { progress: 60 })),
+          ],
+        },
+        leaf("Project Charter", week(3, 5, { progress: 0 })),
+      ],
+    },
+    {
+      ...newTask("Project Definition & Planning"),
+      children: [
+        leaf("Scope & Goals", week(4, 12, { progress: 0 })),
+        leaf("Budget", week(6, 5, { progress: 0 })),
+      ],
+    },
+    leaf("Project Execution", week(7, 33, { progress: 0 })),
+  ];
+}
+
+/** The Monday on or before today, so a starter plan begins on a weekday. */
+function mondayOfThisWeek(): string {
+  const today = todayIso();
+  return addDays(today, -weekday(today));
 }
 
 /** Where the editor keeps its work. localStorage, on this device, only. */

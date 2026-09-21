@@ -15,11 +15,30 @@ export type Rollup = "none" | "sum" | "min" | "max" | "average" | "weighted";
 
 export type FieldValue = string | number | null;
 
+/**
+ * A column the tool fills in rather than the person.
+ *
+ * "duration" counts the days from one date column to another, inclusively.
+ * "timeline" draws a bar in block characters, one character per week of the
+ * whole project, which is what makes the timeline survive a copy into a
+ * spreadsheet with no formatting at all.
+ */
+export interface ComputedSpec {
+  kind: "duration" | "timeline";
+  from: string;
+  to: string;
+  progress?: string;
+}
+
 export interface WbsField {
   id: string;
   label: string;
   type: FieldType;
   rollup: Rollup;
+  /** Set when the value is derived; such a column is never editable. */
+  computed?: ComputedSpec;
+  /** Overrides the Excel number format for this column. */
+  format?: string;
   /** Choices for a select column. */
   options?: string[];
   /** Column width in characters, used by the Excel export. */
@@ -136,6 +155,11 @@ export interface WbsSettings {
   groupRows: boolean;
   includeDictionary: boolean;
   includeSummary: boolean;
+  /** Frozen headings, conditional formatting and print setup in the .xlsx. */
+  officeFormatting: boolean;
+  /** On-screen widths, in pixels, of the WBS Number and Task Title columns. */
+  codeWidth: number;
+  nameWidth: number;
   /** Field whose values weight the "weighted" roll-up. null = equal weight. */
   weightFieldId: string | null;
 }
@@ -152,16 +176,11 @@ export interface GanttSettings {
   showToday: boolean;
   /** Shades Saturdays and Sundays. Only meaningful at the day scale. */
   showWeekends: boolean;
-  /** A bar drawn with block characters, which survives a copy and paste. */
-  showTextBar: boolean;
-  barWidth: number;
   colourBy: ChartColouring;
   colourFieldId: string | null;
   /** Pin the timeline to these dates instead of fitting the work. */
   rangeStart: string | null;
   rangeEnd: string | null;
-  /** Columns shown beside the task name. */
-  showFields: string[];
   /** Adds a Gantt sheet to the Excel download. */
   includeInWorkbook: boolean;
 }
@@ -387,6 +406,92 @@ export interface WbsRow {
   hidden: boolean;
 }
 
+const MS_PER_DAY = 86400000;
+
+/** Days since the epoch for an ISO date, or null. Kept local so the model
+ * stays free of the timeline module, which depends on it. */
+function isoDay(value: FieldValue): number | null {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [y, m, d] = value.split("-").map(Number);
+  const ms = Date.UTC(y, m - 1, d);
+  return Number.isNaN(ms) ? null : Math.round(ms / MS_PER_DAY);
+}
+
+const BAR_DONE = "█";
+const BAR_LEFT = "▒";
+const BAR_NONE = "·";
+
+/** Weeks shown in a timeline column: enough to be useful, few enough to read. */
+const MIN_WEEKS = 4;
+const MAX_WEEKS = 52;
+
+/**
+ * Fills in the derived columns.
+ *
+ * Runs after the roll-ups, so a summary task's duration covers the span of
+ * everything beneath it — its start has already rolled up as the earliest and
+ * its finish as the latest.
+ */
+function applyComputed(rows: WbsRow[], fields: WbsField[]): void {
+  const computed = fields.filter((field) => field.computed);
+  if (computed.length === 0) return;
+
+  for (const field of computed) {
+    const spec = field.computed!;
+    const spans = rows.map((row) => ({
+      from: isoDay(row.values[spec.from] ?? null),
+      to: isoDay(row.values[spec.to] ?? null),
+    }));
+
+    if (spec.kind === "duration") {
+      rows.forEach((row, i) => {
+        const { from, to } = spans[i];
+        const start = from ?? to;
+        const end = to ?? from;
+        row.values[field.id] = start === null || end === null ? null : end - start + 1;
+      });
+      continue;
+    }
+
+    // One character per week across the whole project, so every row's bar
+    // lines up with every other row's.
+    const starts = spans.map((span) => span.from ?? span.to).filter((n): n is number => n !== null);
+    const ends = spans.map((span) => span.to ?? span.from).filter((n): n is number => n !== null);
+    if (starts.length === 0 || ends.length === 0) {
+      rows.forEach((row) => {
+        row.values[field.id] = null;
+      });
+      continue;
+    }
+    const first = Math.min(...starts);
+    const last = Math.max(...ends);
+    const weeks = Math.min(MAX_WEEKS, Math.max(MIN_WEEKS, Math.ceil((last - first + 1) / 7)));
+
+    rows.forEach((row, i) => {
+      const from = spans[i].from ?? spans[i].to;
+      const to = spans[i].to ?? spans[i].from;
+      if (from === null || to === null) {
+        row.values[field.id] = null;
+        return;
+      }
+      const covered: number[] = [];
+      for (let w = 0; w < weeks; w++) {
+        const weekStart = first + w * 7;
+        if (from <= weekStart + 6 && to >= weekStart) covered.push(w);
+      }
+      const progress = spec.progress ? asNumber(row.values[spec.progress] ?? null) : null;
+      const doneWeeks =
+        progress === null ? covered.length : Math.round((covered.length * progress) / 100);
+      let bar = "";
+      for (let w = 0; w < weeks; w++) {
+        const at = covered.indexOf(w);
+        bar += at < 0 ? BAR_NONE : at < doneWeeks ? BAR_DONE : BAR_LEFT;
+      }
+      row.values[field.id] = bar;
+    });
+  }
+}
+
 export function flatten(doc: WbsDoc): WbsRow[] {
   const values = computeValues(doc.tasks, doc.fields, doc.settings.weightFieldId);
   const { style, prefix, separator, pad, startAt } = doc.settings.numbering;
@@ -420,7 +525,7 @@ export function flatten(doc: WbsDoc): WbsRow[] {
       parentId: parent?.id ?? null,
       parentCode: parent?.code ?? "",
       childRows: [],
-      values: values.get(task.id) ?? {},
+      values: { ...(values.get(task.id) ?? {}) },
       own: task.values ?? {},
       collapsed: Boolean(task.collapsed),
       hidden,
@@ -443,6 +548,7 @@ export function flatten(doc: WbsDoc): WbsRow[] {
   };
 
   doc.tasks.forEach((task, i) => walk(task, 1, startAt + i, [], null, false));
+  applyComputed(rows, doc.fields);
   return rows;
 }
 
@@ -616,6 +722,50 @@ export function outdentTask(tasks: WbsTask[], id: string): WbsTask[] {
     return null;
   };
   return step(tasks, null) ?? tasks;
+}
+
+/** True when `id` sits somewhere beneath `ancestorId`. */
+export function isDescendant(tasks: WbsTask[], ancestorId: string, id: string): boolean {
+  const ancestor = findTask(tasks, ancestorId);
+  if (!ancestor) return false;
+  const search = (list: WbsTask[]): boolean =>
+    list.some((task) => task.id === id || search(task.children));
+  return search(ancestor.children);
+}
+
+/**
+ * Moves a task next to another one, taking its level.
+ *
+ * This is what a dragged row does: it lands where it was dropped, as a sibling
+ * of the row it was dropped on. Dropping a task inside itself would detach the
+ * subtree from the document, so that is refused.
+ */
+export function moveTaskTo(
+  tasks: WbsTask[],
+  id: string,
+  targetId: string,
+  position: "before" | "after",
+): WbsTask[] {
+  if (id === targetId) return tasks;
+  if (isDescendant(tasks, id, targetId)) return tasks;
+
+  const moving = findTask(tasks, id);
+  if (!moving) return tasks;
+
+  const without = removeTask(tasks, id);
+  const insert = (list: WbsTask[]): WbsTask[] => {
+    const index = list.findIndex((task) => task.id === targetId);
+    if (index >= 0) {
+      const next = [...list];
+      next.splice(position === "before" ? index : index + 1, 0, moving);
+      return next;
+    }
+    return list.map((task) => ({ ...task, children: insert(task.children) }));
+  };
+
+  const moved = insert(without);
+  // The target vanished with the subtree that was lifted out: leave it alone.
+  return findTask(moved, id) ? moved : tasks;
 }
 
 export function toggleCollapse(tasks: WbsTask[], id: string): WbsTask[] {

@@ -227,9 +227,9 @@ export const PRODUCTIVITY_TOOLS: Tool[] = [
   {
     id: "wbs",
     name: "WBS Builder",
-    short: "Build a WBS as a grid, a chart or a Gantt — and export it to Excel.",
+    short: "A project WBS spreadsheet with a Gantt, built for Excel.",
     long:
-      "Break a project into phases, deliverables and work packages, and see it three ways at once: a spreadsheet grid, a drag-and-drop chart, and a Gantt timeline — side by side, all updating as you type. The WBS codes number themselves, the columns are yours to define, and the summary rows roll up their children. Take it away as a real Excel workbook with live formulas and a Gantt sheet, copy the timeline straight into a spreadsheet, or export the chart as a picture. All of it runs in your browser with nothing uploaded.",
+      "A work breakdown structure the way a project office expects one: a spreadsheet, one row per task, with WBS Number, Task Title, Task Owner, Start Date, Due Date, Duration, % Complete and a Timeline column. The numbering keeps itself in order as you indent, outdent and drag rows around; duration counts itself from the dates; summary rows roll up their children. A Gantt timeline sits beside it and writes back to the same dates, and the Excel download arrives with frozen headings, coloured timeline bars and a page set up to print. Everything runs in your browser, and nothing is uploaded.",
     category: "productivity",
     route: "/tools/wbs",
     keywords: [
@@ -256,14 +256,18 @@ export const PRODUCTIVITY_TOOLS: Tool[] = [
       "Build a work breakdown structure with automatic WBS numbering, custom columns and roll-up totals, then export a real Excel .xlsx. Free, and nothing is uploaded.",
     steps: [
       "Start from a template, paste an outline, or open a spreadsheet you already have.",
-      "Add tasks and sub-tasks in the grid, or drag them around on the chart — the WBS codes renumber themselves either way.",
-      "Add the columns you need and choose how each one rolls up to its summary rows.",
-      "Put start and finish dates on the work packages — the Gantt draws itself and summary bars span their children.",
+      "Add rows, indent them to make sub-tasks, and drag them into order — the WBS numbers follow.",
+      "Fill in owners and dates; duration and the timeline work themselves out.",
+      "Check it on the Gantt beside the sheet, dragging bars to reschedule if you need to.",
       "Download the Excel workbook, copy the timeline straight into a spreadsheet, or export the chart as a picture.",
     ],
     features: [
-      "Three views of one plan — grid, chart and Gantt — side by side, updating as you type",
-      "A Gantt timeline by day, week, month or quarter, with progress fill, a today line and shaded weekends",
+      "A spreadsheet first: WBS Number, Task Title, Owner, Start, Due, Duration, % Complete and Timeline",
+      "Sticky headings, resizable columns, inline editing, and rows you can drag into order",
+      "Duration counted from the dates, and a week-by-week timeline bar, both worked out for you",
+      "The sheet, the Gantt and the chart side by side, all updating as you type",
+      "A Gantt by day, week, month or quarter with a month band, milestones, progress fill and a today line",
+      "Drag a bar to reschedule a task — the dates in the sheet change with it",
       "Copy for Excel: the whole timeline on the clipboard, one column per period, ready to paste",
       "A drag-and-drop chart view: pan, zoom, rearrange cards and rename them in place",
       "Top-down, left-to-right or indented layouts, with elbow, curved or straight connectors",
@@ -273,6 +277,7 @@ export const PRODUCTIVITY_TOOLS: Tool[] = [
       "Roll-ups that total, average or weight the work packages beneath each summary row",
       "Excel export with live =SUM(), =MIN() and =MAX() formulas on the summary rows",
       "Collapsible row groups, column widths and real Excel dates, currency and percentages",
+      "Excel files that arrive finished: frozen headings, coloured timeline bars, a % Complete data bar, landscape print setup",
       "Optional WBS dictionary, Gantt and branch-summary sheets in the same workbook",
       "Chart exports as PNG or SVG, or as a diagram file you can keep editing on the Canvas",
       "Imports a spreadsheet back in, reading the hierarchy from codes, level columns or indentation",
@@ -298,6 +303,10 @@ export const PRODUCTIVITY_TOOLS: Tool[] = [
       {
         q: "Can I draw the WBS rather than type it?",
         a: "Yes. The Chart tab is a canvas: drag cards to place them, drag the background to pan, hold ⌘ or Ctrl and scroll to zoom, double-click a card to rename it, and use the +/− bubble on a summary card to fold a branch away. The layout is automatic until you move something, and Auto-layout puts every hand-placed card back. Because the chart and the spreadsheet are the same document, a card you drag is still a row in the Excel download.",
+      },
+      {
+        q: "Does the Excel file need formatting once it opens?",
+        a: "No. The headings and the first two columns are frozen, the timeline blocks are coloured by conditional formatting so the bars appear on their own, % Complete gets a data bar, and the page is set to print landscape across one page wide. Dates, durations and percentages are real Excel values underneath, so you can sort, filter and chart them. Turn the formatting off in Layout & export if you would rather have a plain sheet.",
       },
       {
         q: "How do I get a Gantt chart into Excel?",

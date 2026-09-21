@@ -18,6 +18,7 @@ import {
   flatten,
   indentTask,
   moveTask,
+  moveTaskTo,
   newTask,
   outdentTask,
   removeTask,
@@ -55,7 +56,9 @@ interface ViewState {
 }
 
 const WBS_VIEW_KEY = "wbs-view";
-const DEFAULT_VIEW: ViewState = { split: true, ratio: 0.55, preview: "chart" };
+// The sheet is the tool; the timeline is what is worth seeing beside it. The
+// chart stays a tab of its own rather than the default second pane.
+const DEFAULT_VIEW: ViewState = { split: true, ratio: 0.62, preview: "gantt" };
 
 const TABS = [
   { id: "build", label: "Build" },
@@ -123,7 +126,10 @@ export function WbsBuilder() {
       typeof storedView?.ratio === "number"
         ? Math.min(0.75, Math.max(0.25, storedView.ratio))
         : DEFAULT_VIEW.ratio,
-    preview: storedView?.preview === "sheet" ? "sheet" : "chart",
+    preview:
+      storedView?.preview === "sheet" || storedView?.preview === "chart"
+        ? storedView.preview
+        : DEFAULT_VIEW.preview,
   };
   const setView = (patch: Partial<ViewState>) => writeLocal(WBS_VIEW_KEY, { ...view, ...patch });
 
@@ -151,6 +157,14 @@ export function WbsBuilder() {
 
   function chartSettings(changes: Partial<ChartSettings>) {
     setDoc((current) => ({ ...current, chart: { ...current.chart, ...changes } }));
+  }
+
+  /** A bar dragged on the timeline is a change to the date columns. */
+  function setDates(id: string, dates: { start: string; end: string }) {
+    edit((tasks) => {
+      const withStart = setValue(tasks, id, doc.gantt.startFieldId, dates.start);
+      return setValue(withStart, id, doc.gantt.endFieldId, dates.end);
+    });
   }
 
   function styleTask(id: string, style: NodeStyle | undefined) {
@@ -317,7 +331,25 @@ export function WbsBuilder() {
                 edit((tasks) => setValue(tasks, id, fieldId, value)),
               onToggle: (id) => edit((tasks) => toggleCollapse(tasks, id)),
               onKeyDown,
+              onReorder: (id, targetId, position) =>
+                edit((tasks) => moveTaskTo(tasks, id, targetId, position)),
+              onResizeField: (fieldId, chars) =>
+                setDoc((current) => ({
+                  ...current,
+                  fields: current.fields.map((field) =>
+                    field.id === fieldId
+                      ? { ...field, width: Math.min(80, Math.max(4, chars)) }
+                      : field,
+                  ),
+                })),
+              onResizeColumn: (column, px) =>
+                settings(
+                  column === "code"
+                    ? { codeWidth: Math.min(320, Math.max(70, px)) }
+                    : { nameWidth: Math.min(640, Math.max(140, px)) },
+                ),
             }}
+            height={view.split ? 460 : 560}
           />
 
           <p className="text-xs font-semibold text-[var(--muted)]">
@@ -403,6 +435,7 @@ export function WbsBuilder() {
           selectedId={selectedId}
           onSelect={setSelectedId}
           onGantt={ganttSettings}
+          onDates={setDates}
           height={view.split ? 420 : 520}
         />
       ) : null}
@@ -550,6 +583,7 @@ export function WbsBuilder() {
               onAddChild={addSubtask}
               onAddSibling={(id) => addTask(null, id)}
               onDelete={remove}
+              onDates={setDates}
             />
           }
         />
