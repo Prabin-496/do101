@@ -8,6 +8,7 @@ const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string
     title: "Categories",
     links: [
       { href: "/tools", label: "All tools" },
+      { href: "/how-to", label: "How-to guides" },
       { href: "/tools/pdf", label: "PDF tools" },
       { href: "/tools/image", label: "Image tools" },
       { href: "/tools/converters", label: "Converters" },
@@ -25,6 +26,7 @@ const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string
       { href: "/tools/pdf-merge", label: "Merge PDF" },
       { href: "/tools/image-compressor", label: "Image Compressor" },
       { href: "/tools/heic-to-jpg", label: "HEIC to JPG" },
+      { href: "/tools/video-to-mp3", label: "Video to MP3" },
       { href: "/tools/pdf-to-word", label: "PDF to Word" },
       { href: "/tools/json-formatter", label: "JSON Formatter" },
       { href: "/tools/word-counter", label: "Word Counter" },

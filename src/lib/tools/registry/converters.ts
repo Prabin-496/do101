@@ -224,4 +224,87 @@ export const CONVERTERS_TOOLS: Tool[] = [
       { q: "How are rates between two non-euro currencies worked out?", a: "Through the euro, the way the ECB publishes them. USD to INR, for example, is the euro's INR rate divided by the euro's USD rate. That is the standard way cross rates are built from reference rates." },
     ],
   },
+  {
+    id: "video-to-mp3",
+    name: "Video to MP3",
+    short: "Convert any video to MP3 — MP4, MOV, WebM and more. Free, and nothing is uploaded.",
+    long:
+      "Turn a video into an MP3 in your browser: a lecture, a Zoom or Teams recording, a phone video, a screen recording or a video you uploaded yourself. Pick the quality from 128 to 320 kbps, trim to just the part you want, and switch to mono for speech to halve the size. The audio is decoded by your own browser and encoded to MP3 on your device, so the file is never uploaded — there is no size-limited server queue, no watermark, no sign-up and no cost.",
+    category: "converter",
+    route: "/tools/video-to-mp3",
+    keywords: [
+      "video to mp3", "mp4 to mp3", "convert video to mp3", "mp4 to mp3 converter",
+      "extract audio from video", "video to audio converter", "mov to mp3", "webm to mp3",
+      "m4a to mp3", "wav to mp3", "convert mp4 to mp3 free", "video to mp3 converter online",
+      "iphone video to mp3", "zoom recording to mp3",
+    ],
+    aliases: [
+      "mp4 to mp3", "extract audio", "audio extractor", "video to audio", "mp3 converter",
+      "rip audio from my video", "convert to mp3",
+    ],
+    icon: "🎵",
+    accent: "fire",
+    browserOnly: true,
+    aiInvocable: false,
+    input: "file",
+    output: "file",
+    related: ["youtube-downloader", "image-converter", "heic-to-jpg", "pdf-compress"],
+    seoTitle: "Video to MP3 Converter — Free MP4 to MP3, No Upload | DO101",
+    seoDescription:
+      "Convert MP4, MOV, WebM and other videos to MP3 free in your browser. Choose 128–320 kbps, trim the clip, go mono for speech. No upload, no sign-up, no watermark.",
+    steps: [
+      "Drop a video or audio file in, or tap Choose file — MP4, MOV, WebM, M4A and WAV all work.",
+      "Pick the MP3 quality. 192 kbps suits most things; 128 kbps with Mono is plenty for speech.",
+      "Optionally type a start and end time to keep only part of it.",
+      "Press Convert to MP3, listen to the result, and download it.",
+    ],
+    features: [
+      "Converts MP4, MOV, M4V, WebM, M4A, AAC, WAV, OGG, FLAC and more",
+      "Quality from 128 to 320 kbps, with the file size shown before you convert",
+      "Trim to a start and end time without a separate editor",
+      "Mono option that halves the size of lectures and voice notes",
+      "Preview the video and the finished MP3 on the page",
+      "Runs in your browser — the file is never uploaded, so it stays private",
+      "Free, no sign-up, no watermark and no daily limit",
+    ],
+    faqs: [
+      {
+        q: "How do I convert an MP4 to MP3?",
+        a: "Drop the MP4 onto this page, choose a quality, and press Convert to MP3. The audio track is decoded and re-encoded as an MP3 on your own device, and a download button appears when it is done. The same works for MOV, WebM, M4V and most other video files.",
+      },
+      {
+        q: "Is this video to MP3 converter really free?",
+        a: "Yes. There is no sign-up, no watermark, no daily limit and no paid tier. Because the conversion runs on your own device, it costs DO101 nothing to run, so there is nothing to charge for.",
+      },
+      {
+        q: "Are my videos uploaded anywhere?",
+        a: "No. Your browser decodes the audio itself and the MP3 encoder (lamejs) runs as JavaScript on this page. There is no upload endpoint behind the tool — you can disconnect from the internet after the page has loaded and it still works.",
+      },
+      {
+        q: "Which MP3 quality should I choose?",
+        a: "192 kbps is a good default for music and sounds the same as the source to most listeners. 320 kbps is the highest MP3 allows. For lectures, podcasts and voice notes, 128 kbps with Mono switched on is clear and about a quarter of the size of 320 kbps stereo.",
+      },
+      {
+        q: "Can I convert only part of a video?",
+        a: "Yes. Type a start time and an end time, such as 1:30 and 4:05, and only that section becomes an MP3. The estimated file size updates as you type.",
+      },
+      {
+        q: "Is there a file size limit?",
+        a: "There is no limit set by DO101, but the whole audio track is held in your browser's memory while it converts. Files up to about an hour convert comfortably on a laptop; very long or very large files can run out of memory, especially on phones. Trimming, or choosing Mono, helps.",
+      },
+      {
+        q: "Why won't my file convert?",
+        a: "The browser has to be able to decode the audio itself. MP4, MOV, M4A, WebM, MP3, WAV and OGG work in every current browser. AVI, WMV, MKV and some older formats depend on the browser — Chrome and Edge read the most. A video with no sound track has nothing to convert.",
+      },
+      {
+        q: "Can I convert a YouTube video to MP3?",
+        a: "DO101 does not download from YouTube, because YouTube's Terms of Service do not allow it. If the video is yours, download the original from YouTube Studio, then drop that file here to get an MP3. For anyone else's video, YouTube Premium offers offline listening inside the app.",
+      },
+      {
+        q: "Does it work on iPhone and Android?",
+        a: "Yes, in Safari, Chrome and other current mobile browsers. Choose the video from your photo library or files. Long videos need more memory than a phone may have, so trim them or switch on Mono.",
+      },
+    ],
+    featured: true,
+  },
 ];

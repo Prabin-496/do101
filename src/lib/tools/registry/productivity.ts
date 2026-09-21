@@ -524,7 +524,7 @@ export const PRODUCTIVITY_TOOLS: Tool[] = [
     aiInvocable: false,
     input: "text",
     output: "file",
-    related: ["thumbnail-grabber", "canvas", "image-compressor", "qr-generator"],
+    related: ["video-to-mp3", "thumbnail-grabber", "canvas", "image-compressor", "qr-generator"],
     seoTitle: "YouTube Downloader — Thumbnails & Official Routes | DO101",
     seoDescription:
       "Check any YouTube link, save its thumbnail at full resolution, and see the official ways to download a video you own. No account, no sign-up, no fake buttons.",

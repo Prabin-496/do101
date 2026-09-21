@@ -26,6 +26,7 @@ const config: CategoryPageConfig = {
           <p><strong>Data:</strong> <Link href="/tools/csv-to-json">CSV to JSON</Link>, <Link href="/tools/json-to-csv">JSON to CSV</Link>, <Link href="/tools/xml-to-json">XML to JSON</Link>, <Link href="/tools/json-to-xml">JSON to XML</Link>, <Link href="/tools/yaml-to-json">YAML to JSON</Link> and <Link href="/tools/json-to-yaml">JSON to YAML</Link>.</p>
           <p><strong>Documents:</strong> <Link href="/tools/pdf-to-word">PDF to Word</Link>, <Link href="/tools/word-to-pdf">Word to PDF</Link>, <Link href="/tools/markdown-to-pdf">Markdown to PDF</Link>, <Link href="/tools/html-to-pdf">HTML to PDF</Link> and <Link href="/tools/pdf-to-text">PDF to text</Link>.</p>
           <p><strong>Markup:</strong> <Link href="/tools/markdown-to-html">Markdown to HTML</Link> and <Link href="/tools/html-to-markdown">HTML to Markdown</Link>.</p>
+          <p><strong>Audio:</strong> <Link href="/tools/video-to-mp3">Video to MP3</Link> turns MP4, MOV and WebM files into MP3 in your browser, with trimming and a choice of quality.</p>
           <p><strong>Images:</strong> the full set lives in <Link href="/tools/image">image tools</Link>, including <Link href="/tools/heic-to-jpg">HEIC to JPG</Link> and the WebP converters.</p>
         </>
       ),

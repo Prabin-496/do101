@@ -16,7 +16,14 @@
 import type { Candle, Series, Timeframe } from "../types";
 import { getJson, MarketDataError, type AdapterSymbol, type FetchOptions, type MarketAdapter } from "./types";
 
-const BASE = "https://api.binance.com/api/v3/klines";
+/**
+ * Binance answers api.binance.com with HTTP 451 to visitors in the United
+ * States and other restricted regions, which on a public site is a large
+ * share of readers. data-api.binance.vision is Binance's own public
+ * market-data host: the same klines, CORS-open, and not geo-fenced. The main
+ * API stays as a fallback in case the market-data host is unreachable.
+ */
+const HOSTS = ["https://data-api.binance.vision", "https://api.binance.com"];
 
 const INTERVALS: Record<Timeframe, string> = {
   "1m": "1m",
@@ -50,9 +57,9 @@ const SYMBOLS: AdapterSymbol[] = [
   },
 ];
 
-export function binanceUrl(symbol: string, timeframe: Timeframe, limit: number): string {
+export function binanceUrl(symbol: string, timeframe: Timeframe, limit: number, host = HOSTS[0]): string {
   const interval = INTERVALS[timeframe] ?? "1h";
-  return `${BASE}?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${Math.min(1000, Math.max(50, limit))}`;
+  return `${host}/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${Math.min(1000, Math.max(50, limit))}`;
 }
 
 /** Binance returns arrays: [openTime, open, high, low, close, volume, ...]. */
@@ -75,6 +82,19 @@ export function parseBinance(data: unknown): Candle[] {
   return candles;
 }
 
+async function getKlines(symbol: string, timeframe: Timeframe, limit: number, signal?: AbortSignal): Promise<unknown> {
+  let lastError: unknown;
+  for (const host of HOSTS) {
+    try {
+      return await getJson(binanceUrl(symbol, timeframe, limit, host), signal);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") throw error;
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 export const binanceAdapter: MarketAdapter = {
   id: "binance",
   name: "Binance (gold-token and EUR proxies)",
@@ -87,7 +107,7 @@ export const binanceAdapter: MarketAdapter = {
   symbols: SYMBOLS,
   async fetchSeries({ symbol, timeframe, limit = 1000, signal }: FetchOptions): Promise<Series> {
     const entry = SYMBOLS.find((s) => s.id === symbol) ?? SYMBOLS[0];
-    const candles = parseBinance(await getJson(binanceUrl(symbol, timeframe, limit), signal));
+    const candles = parseBinance(await getKlines(symbol, timeframe, limit, signal));
     if (candles.length < 50) throw new MarketDataError("Too few bars came back to analyse.");
     return {
       symbol: entry.label.split(" — ")[0],

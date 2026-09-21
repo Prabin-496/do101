@@ -4,6 +4,7 @@ import { CATEGORY_META } from "@/lib/tools/types";
 import { HUB_CATEGORIES } from "@/lib/tools/links";
 import { CATEGORY_ORDER as NEWS_CATEGORIES } from "@/lib/news/types";
 import { absoluteUrl } from "@/lib/site";
+import { GUIDES, guidePath } from "@/lib/guides/guides";
 
 type Entry = MetadataRoute.Sitemap[number];
 
@@ -15,6 +16,7 @@ const STATIC_ROUTES: Array<{
   { path: "/", priority: 1, changeFrequency: "weekly" },
   { path: "/tools", priority: 0.9, changeFrequency: "weekly" },
   { path: "/writing", priority: 0.9, changeFrequency: "weekly" },
+  { path: "/how-to", priority: 0.8, changeFrequency: "weekly" },
   { path: "/workspace", priority: 0.8, changeFrequency: "monthly" },
   { path: "/calculators", priority: 0.8, changeFrequency: "weekly" },
   { path: "/games", priority: 0.8, changeFrequency: "weekly" },
@@ -52,6 +54,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified,
       changeFrequency: "hourly" as const,
       priority: 0.8,
+    })),
+    // Guides target the long, specific searches the tool pages are too general for.
+    ...GUIDES.map((guide) => ({
+      url: absoluteUrl(guidePath(guide)),
+      lastModified,
+      changeFrequency: "monthly" as const,
+      priority: 0.75,
     })),
     ...TOOLS.map((tool) => ({
       url: absoluteUrl(tool.route),

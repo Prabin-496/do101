@@ -4,6 +4,7 @@ import { categoryHref } from "@/lib/tools/links";
 import { SOURCE_COUNT } from "@/lib/news/sources";
 import { CATEGORY_LABELS, CATEGORY_ORDER as NEWS_CATEGORIES } from "@/lib/news/types";
 import { SITE, absoluteUrl } from "@/lib/site";
+import { GUIDES, guidePath } from "@/lib/guides/guides";
 
 export const dynamic = "force-static";
 
@@ -97,6 +98,9 @@ export function GET() {
     "- OCR downloads a language model (~12–15 MB) from a public CDN on first use; recognition itself is local.",
   );
   lines.push(
+    "- Video to MP3 converts files the user already has, decoding audio with the browser's own media engine and encoding with lamejs on the device. It does not download from YouTube or any other site. Formats the browser cannot decode (some AVI, WMV and MKV files) are reported rather than attempted, and very long files are limited by the device's memory.",
+  );
+  lines.push(
     "- The optional AI assistant only routes requests to tools; the tools themselves execute in the browser.",
   );
   lines.push(
@@ -107,6 +111,7 @@ export function GET() {
   lines.push("");
   lines.push(`- [Home](${absoluteUrl("/")}): search box and category overview.`);
   lines.push(`- [All tools](${absoluteUrl("/tools")}): searchable directory of every tool.`);
+  lines.push(`- [How-to guides](${absoluteUrl("/how-to")}): step-by-step answers to specific tasks.`);
   lines.push(`- [About](${absoluteUrl("/about")}): what DO101 is and why it exists.`);
   lines.push(`- [Privacy](${absoluteUrl("/privacy")}): exactly what is processed locally and what is not.`);
   lines.push(`- [Terms](${absoluteUrl("/terms")}): terms of use and disclaimers.`);
@@ -133,6 +138,17 @@ export function GET() {
     }
     lines.push("");
   }
+
+  lines.push(`## How-to guides (${GUIDES.length})`);
+  lines.push("");
+  lines.push(
+    `Task-specific answers, each ending at the DO101 tool that does the job. Index: ${absoluteUrl("/how-to")}`,
+  );
+  lines.push("");
+  for (const guide of GUIDES) {
+    lines.push(`- [${guide.heading}](${absoluteUrl(guidePath(guide))}): ${guide.seoDescription}`);
+  }
+  lines.push("");
 
   lines.push(`## News (${SOURCE_COUNT} sources)`);
   lines.push("");

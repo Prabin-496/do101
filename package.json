@@ -17,6 +17,7 @@
     "verify": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
+    "@breezystack/lamejs": "^1.2.7",
     "@cantoo/pdf-lib": "^2.9.2",
     "@sglkc/kuromoji": "^1.1.0",
     "canvas-confetti": "^1.9.4",

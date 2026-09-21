@@ -6,6 +6,12 @@
  * page served over HTTPS is allowed to read it; the bridge answers the private
  * network preflight that Chrome sends first.
  *
+ * Chrome's Local Network Access rules add a permission on top: a public site
+ * may only reach loopback once the visitor allows it. On localhost during
+ * development the page and the bridge share an address space, so the check
+ * never fires — which is why this only fails on the live site, and why the
+ * error has to name the permission rather than blame the bridge.
+ *
  * This is the only source here that returns the visitor's *own broker's* gold
  * feed, with that broker's contract size, digits and live spread. Better data
  * does not make a strategy work — but it does mean a disappointing backtest is
@@ -20,14 +26,36 @@ export function bridgeBase(port = MT5_DEFAULT_PORT): string {
   return `http://127.0.0.1:${port}`;
 }
 
+/** Names Chrome has used for the loopback permission, newest first. */
+const LOOPBACK_PERMISSIONS = ["loopback-network", "local-network-access", "local-network"];
+
+async function loopbackPermission(): Promise<PermissionState | null> {
+  if (typeof navigator === "undefined" || !navigator.permissions) return null;
+  for (const name of LOOPBACK_PERMISSIONS) {
+    try {
+      return (await navigator.permissions.query({ name } as unknown as PermissionDescriptor)).state;
+    } catch {
+      // Not a permission this browser knows by that name.
+    }
+  }
+  return null;
+}
+
 async function bridgeJson(path: string, port: number, signal?: AbortSignal): Promise<unknown> {
   let response: Response;
   try {
-    response = await fetch(`${bridgeBase(port)}${path}`, { signal });
+    // targetAddressSpace tells Chrome up front that this is a loopback
+    // request, so it asks the visitor instead of failing it outright.
+    response = await fetch(`${bridgeBase(port)}${path}`, { signal, targetAddressSpace: "loopback" } as RequestInit);
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") throw error;
+    if ((await loopbackPermission()) === "denied") {
+      throw new MarketDataError(
+        "Your browser blocked this site from reaching the bridge on your own computer. Click the icon to the left of the address bar, open Site settings, set Local network access to Allow, then reload and connect again.",
+      );
+    }
     throw new MarketDataError(
-      `Nothing answered on ${bridgeBase(port)}. Start the bridge script on the computer running MetaTrader 5, and keep that window open.`,
+      `Nothing answered on ${bridgeBase(port)}. Start the bridge script on the computer running MetaTrader 5 and keep that window open. If your browser asks whether this site may access devices on your local network, choose Allow — that is how it reaches the bridge. Safari and some privacy browsers refuse this outright; use Chrome or Edge, or export a CSV with the bridge's --csv mode.`,
     );
   }
   const data = await response.json().catch(() => null);

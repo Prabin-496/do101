@@ -1,4 +1,5 @@
 import * as React from "react";
+import Link from "next/link";
 import type { Tool } from "@/lib/tools/types";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { Faq } from "./Faq";
@@ -7,6 +8,7 @@ import { AdSlot } from "./AdSlot";
 import { ToolVisitTracker } from "./ToolVisitTracker";
 import { InfoNote } from "@/components/ui/Feedback";
 import { toolBreadcrumbs } from "@/lib/tools/links";
+import { guidesForTool, guidePath } from "@/lib/guides/guides";
 
 const ACCENT_RING: Record<Tool["accent"], string> = {
   grass: "bg-[var(--grass-soft)]",
@@ -38,6 +40,7 @@ export function ToolShell({
 }) {
   // Prose stays at a readable width even when the tool spans the page.
   const prose = wide ? "mx-auto w-full max-w-4xl" : "";
+  const guides = guidesForTool(tool.id);
 
   return (
     <div
@@ -133,6 +136,26 @@ export function ToolShell({
           </section>
 
           {extraContent}
+
+          {guides.length ? (
+            <section aria-labelledby="guides-heading">
+              <h2 id="guides-heading" className="mb-4 text-xl sm:text-2xl">
+                Step-by-step guides
+              </h2>
+              <ul className="space-y-2">
+                {guides.map((guide) => (
+                  <li key={guide.slug}>
+                    <Link
+                      href={guidePath(guide)}
+                      className="do-card do-card-hover block px-4 py-3 text-sm font-extrabold"
+                    >
+                      {guide.heading} →
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           <Faq items={tool.faqs} />
 

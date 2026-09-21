@@ -96,3 +96,36 @@ export function itemListSchema(tools: Tool[], name: string): Json {
     })),
   };
 }
+
+/** A how-to guide: the steps, and the DO101 tool they are carried out in. */
+export function howToSchema({
+  name,
+  description,
+  path,
+  steps,
+  tool,
+}: {
+  name: string;
+  description: string;
+  path: string;
+  steps: string[];
+  tool: Tool;
+}): Json {
+  return {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name,
+    description,
+    url: absoluteUrl(path),
+    image: absoluteUrl(`/og/${tool.id}`),
+    inLanguage: "en",
+    tool: [{ "@type": "HowToTool", name: `${SITE.name} ${tool.name}`, url: absoluteUrl(tool.route) }],
+    step: steps.map((text, i) => ({
+      "@type": "HowToStep",
+      position: i + 1,
+      text,
+      url: `${absoluteUrl(path)}#step-${i + 1}`,
+    })),
+    estimatedCost: { "@type": "MonetaryAmount", currency: "USD", value: "0" },
+  };
+}

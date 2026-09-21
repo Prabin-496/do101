@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ToolShell } from "@/components/tools/ToolShell";
 import { YoutubeDownloader } from "@/components/tools/youtube/YoutubeDownloader";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -80,6 +81,20 @@ export default function Page() {
                   a documented provider interface to connect a lawful media source to.
                 </p>
               </div>
+            </section>
+
+            <section aria-labelledby="mp3-heading">
+              <h2 id="mp3-heading" className="mb-3 text-xl sm:text-2xl">
+                Got the file? Turn it into an MP3
+              </h2>
+              <p className="text-base font-semibold leading-relaxed text-[var(--muted)]">
+                Once you have downloaded your own video from YouTube Studio, the{" "}
+                <Link href="/tools/video-to-mp3" className="font-extrabold text-[var(--sky)] underline">
+                  Video to MP3 converter
+                </Link>{" "}
+                turns it into an MP3 in your browser — any quality from 128 to 320 kbps, trimmed to
+                the part you want, and never uploaded.
+              </p>
             </section>
 
             <section aria-labelledby="privacy-heading">

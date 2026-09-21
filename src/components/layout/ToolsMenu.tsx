@@ -27,6 +27,7 @@ const SHORTCUTS = [
   { href: "/tools/pdf-to-word", label: "PDF to Word" },
   { href: "/tools/image-compressor", label: "Compress image" },
   { href: "/tools/heic-to-jpg", label: "HEIC to JPG" },
+  { href: "/tools/video-to-mp3", label: "Video to MP3" },
   { href: "/tools/grammar-checker", label: "Grammar checker" },
   { href: "/tools/japanese-translator", label: "Japanese translator" },
   { href: "/tools/notes", label: "Notes" },

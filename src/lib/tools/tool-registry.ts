@@ -5,6 +5,7 @@ import { CONVERTERS_TOOLS } from "./registry/converters";
 import { TEXT_TOOLS } from "./registry/text";
 import { WRITING_TOOLS } from "./registry/writing";
 import { PRODUCTIVITY_TOOLS } from "./registry/productivity";
+import { WORK_TOOLS } from "./registry/work";
 import { JAPANESE_TOOLS } from "./registry/japanese";
 import { DEVELOPER_TOOLS } from "./registry/developer";
 import { SEO_TOOLS } from "./registry/seo";
@@ -28,6 +29,7 @@ export const TOOLS: Tool[] = [
   ...CONVERTERS_TOOLS,
   ...WRITING_TOOLS,
   ...PRODUCTIVITY_TOOLS,
+  ...WORK_TOOLS,
   ...JAPANESE_TOOLS,
   ...TEXT_TOOLS,
   ...DEVELOPER_TOOLS,

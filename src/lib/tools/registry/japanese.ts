@@ -30,7 +30,7 @@ export const JAPANESE_TOOLS: Tool[] = [
     aiInvocable: true,
     input: "text",
     output: "text",
-    related: ["romaji-converter", "earth-globe", "notes", "workspace"],
+    related: ["romaji-converter", "japanese-workplace", "earth-globe", "notes", "workspace"],
     seoTitle: "Japanese ⇄ English Translator with Romaji & Furigana | DO101",
     seoDescription:
       "Translate English and Japanese both ways, with readings above each word, hiragana, katakana, Hepburn romaji, kanji meanings and keyboard typing help. Free.",

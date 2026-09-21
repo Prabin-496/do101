@@ -315,6 +315,10 @@ export default function HomePage() {
                 opening an iPhone HEIC photo
               </Link>
               ,{" "}
+              <Link href="/tools/video-to-mp3" className="font-extrabold text-[var(--ink)] underline">
+                pulling the audio out of a video as an MP3
+              </Link>
+              ,{" "}
               <Link href="/tools/json-formatter" className="font-extrabold text-[var(--ink)] underline">
                 making JSON readable
               </Link>{" "}
