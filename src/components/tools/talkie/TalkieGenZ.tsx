@@ -9,6 +9,7 @@ import { Input, Label, Toggle } from "@/components/ui/Field";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { ErrorState, InfoNote } from "@/components/ui/Feedback";
 import { TalkButton } from "./TalkButton";
+import { RoomQr, RoomQrScanner } from "./RoomQr";
 import {
   MAX_MEMBERS,
   MAX_NAME_LENGTH,
@@ -42,6 +43,8 @@ import {
   supportsVoiceChat,
 } from "@/lib/talkie/audio";
 import { SITE } from "@/lib/site";
+import { readLocal, writeLocal } from "@/lib/utils/storage";
+import { useLocalValue } from "@/lib/utils/use-local";
 import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils/cn";
 
@@ -50,6 +53,9 @@ type Status = "idle" | "connecting" | "open" | "lost";
 type Link = "connecting" | "live" | "failed";
 
 const TONES = ["cherry", "sky", "grass", "grape", "fire", "sun"] as const;
+
+/** Where the last name you used is kept, so an invite can join you straight in. */
+const NAME_KEY = "talkie:name";
 
 /** Browser support is fixed for the life of the page; nothing to subscribe to. */
 const NO_SUBSCRIBE = () => () => {};
@@ -65,7 +71,20 @@ export function TalkieGenZ() {
   const [joinCode, setJoinCode] = React.useState(() =>
     normalizeRoomCode(searchParams.get("room") ?? ""),
   );
-  const [name, setName] = React.useState("");
+  /** The code an invite link or QR code arrived with, so the menu can say so. */
+  const [invitedTo] = React.useState(() => normalizeRoomCode(searchParams.get("room") ?? ""));
+  /** What you typed this visit; until you type, the name you used last time. */
+  const [typedName, setName] = React.useState<string | null>(null);
+  const savedName = useLocalValue(NAME_KEY, "");
+  const name = typedName ?? savedName;
+  /** Invite links and QR codes carry `join=1`: opening one joins without a tap. */
+  const [autoJoin] = React.useState(
+    () =>
+      searchParams.get("join") === "1" &&
+      normalizeRoomCode(searchParams.get("room") ?? "").length >= 4,
+  );
+  const [soundBlocked, setSoundBlocked] = React.useState(false);
+  const [soundRetry, setSoundRetry] = React.useState(0);
   const [members, setMembers] = React.useState<Member[]>([]);
   const [myId, setMyId] = React.useState("");
   const [talking, setTalkingState] = React.useState(false);
@@ -338,6 +357,8 @@ export function TalkieGenZ() {
     setStatus("connecting");
     isHostRef.current = true;
 
+    if (nameRef.current.trim()) writeLocal(NAME_KEY, cleanName(nameRef.current, "Host"));
+
     // The microphone is asked for before anything connects, so a refusal
     // never happens halfway into somebody else's conversation.
     const canTalk = await prepareMic();
@@ -392,6 +413,9 @@ export function TalkieGenZ() {
       setStatus("connecting");
       isHostRef.current = false;
       setRoom(code);
+      // An auto-join can fire before the saved name has reached state.
+      const guestName = nameRef.current.trim() || readLocal(NAME_KEY, "");
+      if (guestName) writeLocal(NAME_KEY, cleanName(guestName, "Guest"));
 
       const canTalk = await prepareMic();
 
@@ -408,7 +432,7 @@ export function TalkieGenZ() {
             setStatus("open");
             conn.send({
               type: "join",
-              name: cleanName(nameRef.current, "Guest"),
+              name: cleanName(guestName, "Guest"),
               canTalk,
             } satisfies GuestMessage);
             track("tool_complete", { tool: "talkie-genz", role: "guest" });
@@ -456,6 +480,18 @@ export function TalkieGenZ() {
     [prepareMic, commitMembers, teardown, wireCall],
   );
 
+  // Opening a shared QR code or invite link joins the room straight away.
+  // Deferred a tick so it runs outside the effect, and once per page load.
+  const autoJoinedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!autoJoin || autoJoinedRef.current) return;
+    const timer = setTimeout(() => {
+      autoJoinedRef.current = true;
+      void joinRoom(normalizeRoomCode(searchParams.get("room") ?? ""));
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [autoJoin, joinRoom, searchParams]);
+
   const leave = React.useCallback(() => {
     teardown();
     setInRoom(false);
@@ -471,6 +507,7 @@ export function TalkieGenZ() {
     setLevel(0);
     setStreams(new Map());
     setLinks(new Map());
+    setSoundBlocked(false);
   }, [teardown]);
 
   /* ------------------------------- screens ------------------------------- */
@@ -493,6 +530,11 @@ export function TalkieGenZ() {
         setJoinCode={setJoinCode}
         onCreate={createRoom}
         onJoin={() => joinRoom(joinCode)}
+        onScanned={(code) => {
+          setJoinCode(code);
+          void joinRoom(code);
+        }}
+        invitedTo={invitedTo}
         busy={status === "connecting"}
         error={error}
         micError={micError}
@@ -504,28 +546,49 @@ export function TalkieGenZ() {
   const me = members.find((m) => m.id === myId) ?? null;
   const others = members.filter((m) => m.id !== myId);
   const canTalk = me?.canTalk ?? false;
-  const roomLink = room ? `${SITE.url}/tools/talkie-genz?room=${room}` : "";
+  const roomLink = room ? `${SITE.url}/tools/talkie-genz?room=${room}&join=1` : "";
   const failed = others.filter((m) => links.get(m.id) === "failed");
 
   return (
     <div className="space-y-4">
-      <Card className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
-        <div>
-          <p className="text-[11px] font-extrabold uppercase tracking-widest text-[var(--muted)]">
-            Room code
-          </p>
-          <p className="font-mono text-3xl font-extrabold tracking-[0.2em]">{room}</p>
+      <Card className="space-y-4 p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-extrabold uppercase tracking-widest text-[var(--muted)]">
+              Room code
+            </p>
+            <p className="font-mono text-3xl font-extrabold tracking-[0.2em]">{room}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <CopyButton value={room} label="Copy code" tone="panel" size="sm" />
+            <CopyButton value={roomLink} label="Copy invite link" tone="sky" size="sm" />
+            <Button tone="ghost" size="sm" onClick={leave}>
+              Leave
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <CopyButton value={room} label="Copy code" tone="panel" size="sm" />
-          <CopyButton value={roomLink} label="Copy invite link" tone="sky" size="sm" />
-          <Button tone="ghost" size="sm" onClick={leave}>
-            Leave
-          </Button>
-        </div>
+        {roomLink ? (
+          <div className="border-t-2 border-[var(--border)] pt-4">
+            <RoomQr room={room} link={roomLink} />
+          </div>
+        ) : null}
       </Card>
 
       {error && status === "lost" ? <ErrorState message={error} /> : null}
+
+      {soundBlocked ? (
+        <Button
+          tone="fire"
+          size="lg"
+          className="w-full"
+          onClick={() => {
+            setSoundBlocked(false);
+            setSoundRetry((n) => n + 1);
+          }}
+        >
+          🔊 Tap to hear the room
+        </Button>
+      ) : null}
 
       {micError ? (
         <ErrorState
@@ -595,7 +658,7 @@ export function TalkieGenZ() {
             {others.length === 0 ? (
               <p className="mt-3 rounded-2xl bg-[var(--panel)] px-4 py-3 text-sm font-extrabold text-[var(--muted)]">
                 <span className="do-bob inline-block">📻</span> Send the code{" "}
-                <span className="font-mono">{room}</span> to a friend. Up to {MAX_MEMBERS - 1} people
+                <span className="font-mono">{room}</span> or the QR code to a friend. Up to {MAX_MEMBERS - 1} people
                 can join you.
               </p>
             ) : null}
@@ -622,7 +685,13 @@ export function TalkieGenZ() {
       {/* The room, heard. Muting is done here rather than by hanging up. */}
       <div className="sr-only">
         {[...streams].map(([id, stream]) => (
-          <RemoteAudio key={id} stream={stream} muted={!listening} />
+          <RemoteAudio
+            key={id}
+            stream={stream}
+            muted={!listening}
+            retry={soundRetry}
+            onBlocked={() => setSoundBlocked(true)}
+          />
         ))}
       </div>
     </div>
@@ -631,19 +700,42 @@ export function TalkieGenZ() {
 
 /* ------------------------------- pieces ------------------------------- */
 
-function RemoteAudio({ stream, muted }: { stream: MediaStream; muted: boolean }) {
+function RemoteAudio({
+  stream,
+  muted,
+  retry,
+  onBlocked,
+}: {
+  stream: MediaStream;
+  muted: boolean;
+  /** Bumped by a tap, which is what a browser that blocked autoplay wants. */
+  retry: number;
+  onBlocked: () => void;
+}) {
   const ref = React.useRef<HTMLAudioElement>(null);
+  const onBlockedRef = React.useRef(onBlocked);
+  React.useEffect(() => {
+    onBlockedRef.current = onBlocked;
+  }, [onBlocked]);
 
   React.useEffect(() => {
     const element = ref.current;
     if (!element) return;
     element.srcObject = stream;
-    // Autoplay is allowed here because joining a room was a deliberate tap.
-    void element.play().catch(() => {});
     return () => {
       element.srcObject = null;
     };
   }, [stream]);
+
+  // A room joined from a QR code had no tap, and some browsers refuse to
+  // play sound until there is one.
+  React.useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    void element.play().catch((err: unknown) => {
+      if (err instanceof Error && err.name === "NotAllowedError") onBlockedRef.current();
+    });
+  }, [stream, retry]);
 
   return <audio ref={ref} autoPlay playsInline muted={muted} />;
 }
@@ -723,6 +815,8 @@ function MenuScreen({
   setJoinCode,
   onCreate,
   onJoin,
+  onScanned,
+  invitedTo,
   busy,
   error,
   micError,
@@ -734,13 +828,32 @@ function MenuScreen({
   setJoinCode: (v: string) => void;
   onCreate: () => void;
   onJoin: () => void;
+  onScanned: (code: string) => void;
+  invitedTo: string;
   busy: boolean;
   error: string | null;
   micError: string | null;
   onReset: () => void;
 }) {
+  const [scanning, setScanning] = React.useState(false);
+
   return (
     <div className="space-y-4">
+      {invitedTo ? (
+        <InfoNote icon="🎟️">
+          {busy ? (
+            <>
+              Joining channel <span className="font-mono">{invitedTo}</span>…
+            </>
+          ) : (
+            <>
+              You were invited to channel <span className="font-mono">{invitedTo}</span>. Add your
+              name and tap Join.
+            </>
+          )}
+        </InfoNote>
+      ) : null}
+
       <Card className="p-5">
         <Label htmlFor="talkie-name" hint="the others see this">
           Your name
@@ -778,28 +891,51 @@ function MenuScreen({
           </span>
           <h2 className="mt-3 text-xl">Join a channel</h2>
           <p className="mt-1 flex-1 text-sm font-semibold text-[var(--muted)]">
-            Got a code from a friend? Type it in and you are on the air.
+            Got a code or a QR code from a friend? Type it or scan it and you are on the air.
           </p>
-          <div className="mt-4 flex gap-2">
-            <label htmlFor="talkie-code" className="sr-only">
-              Channel code
-            </label>
-            <Input
-              id="talkie-code"
-              value={joinCode}
-              onChange={(e) => setJoinCode(normalizeRoomCode(e.target.value))}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && joinCode.length >= 4) onJoin();
-              }}
-              placeholder="ABC12"
-              className="text-center font-mono text-lg uppercase tracking-[0.3em]"
-              maxLength={8}
-              autoComplete="off"
-            />
-            <Button tone="sky" onClick={onJoin} disabled={joinCode.length < 4 || busy}>
-              Join
-            </Button>
-          </div>
+          {scanning ? (
+            <div className="mt-4">
+              <RoomQrScanner
+                onCode={(code) => {
+                  setScanning(false);
+                  onScanned(code);
+                }}
+                onClose={() => setScanning(false)}
+              />
+            </div>
+          ) : (
+            <>
+              <div className="mt-4 flex gap-2">
+                <label htmlFor="talkie-code" className="sr-only">
+                  Channel code
+                </label>
+                <Input
+                  id="talkie-code"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(normalizeRoomCode(e.target.value))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && joinCode.length >= 4) onJoin();
+                  }}
+                  placeholder="ABC12"
+                  className="text-center font-mono text-lg uppercase tracking-[0.3em]"
+                  maxLength={8}
+                  autoComplete="off"
+                />
+                <Button tone="sky" onClick={onJoin} disabled={joinCode.length < 4 || busy}>
+                  Join
+                </Button>
+              </div>
+              <Button
+                tone="panel"
+                size="sm"
+                className="mt-2 self-start"
+                onClick={() => setScanning(true)}
+                disabled={busy}
+              >
+                📷 Scan a QR code
+              </Button>
+            </>
+          )}
         </Card>
       </div>
 
