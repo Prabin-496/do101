@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Vendored, minified pdf.js worker copied in by scripts/copy-pdf-worker.mjs.
     "public/pdf.worker.min.mjs",
+    // Python virtualenvs hold vendored JavaScript that is nothing to do with
+    // this app, and linting it fails the run on other people's code.
+    ".venv*/**",
   ]),
 ]);
 

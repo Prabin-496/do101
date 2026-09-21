@@ -64,7 +64,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${nunito.variable} ${mono.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      // The stylesheet sets scroll-behavior: smooth; this tells the router the
+      // page means it, instead of warning that a transition may be animated.
+      data-scroll-behavior="smooth"
+      className={`${nunito.variable} ${mono.variable}`}
+    >
       <body className="flex min-h-dvh flex-col antialiased">
         <ThemeProvider>
           <LanguageProvider>

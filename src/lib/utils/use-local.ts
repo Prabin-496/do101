@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 /**
  * Reads DO101's localStorage as an external store.
@@ -46,10 +46,15 @@ function snapshot<T>(key: string, fallback: T): T {
 }
 
 export function useLocalValue<T>(key: string, fallback: T): T {
+  // The fallback is pinned to the one given on the first render. Callers pass
+  // it inline — `useLocalValue("recent", [])` — which would otherwise hand
+  // useSyncExternalStore a new array every render, and a snapshot whose
+  // identity keeps changing is what React warns about as an infinite loop.
+  const [initial] = useState(fallback);
   return useSyncExternalStore(
     subscribe,
-    () => snapshot<T>(key, fallback),
-    () => fallback,
+    () => snapshot<T>(key, initial),
+    () => initial,
   );
 }
 

@@ -39,6 +39,7 @@ import {
 } from "@/lib/wbs/model";
 import { createDoc, starterTasks, WBS_STORAGE_KEY } from "@/lib/wbs/templates";
 import { prunePositions } from "@/lib/wbs/chart";
+import { normaliseDoc } from "@/lib/wbs/import";
 import { WbsChartPanel } from "./WbsChartPanel";
 import { WbsGanttPanel } from "./WbsGanttPanel";
 import { WbsLivePreview, type PreviewKind } from "./WbsLivePreview";
@@ -98,11 +99,11 @@ export function WbsBuilder() {
 
   const doc = React.useMemo<WbsDoc>(() => {
     if (edited) return edited;
-    const candidate = stored as WbsDoc | null;
-    if (candidate && typeof candidate === "object" && Array.isArray(candidate.tasks)) {
-      return candidate;
-    }
-    return starter;
+    // Whatever this browser has stored may predate any part of the document,
+    // so it is normalised rather than trusted: a plan saved before the Gantt
+    // existed would otherwise arrive without its settings and take the tool
+    // down with it.
+    return normaliseDoc(stored) ?? starter;
   }, [edited, stored, starter]);
 
   const setDoc = React.useCallback(

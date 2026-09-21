@@ -21,7 +21,14 @@ import {
 } from "@/lib/wbs/model";
 import { defaultChart, defaultFields, defaultGantt, defaultSettings, excelSerialDate, newField } from "@/lib/wbs/fields";
 import { buildGrid, buildSummaryGrid, columnLetter, csvSafe, gridToCsv } from "@/lib/wbs/grid";
-import { docToJson, parseDoc, parseOutline, parseOutlineLines, tableToTasks } from "@/lib/wbs/import";
+import {
+  docToJson,
+  normaliseDoc,
+  parseDoc,
+  parseOutline,
+  parseOutlineLines,
+  tableToTasks,
+} from "@/lib/wbs/import";
 import { starterTasks, TEMPLATES, templateTasks } from "@/lib/wbs/templates";
 
 /**
@@ -634,5 +641,66 @@ describe("dragging a row somewhere else", () => {
   it("does nothing when a row is dropped on itself", () => {
     const tasks = tree();
     expect(moveTaskTo(tasks, tasks[0].id, tasks[0].id, "after")).toEqual(tasks);
+  });
+});
+
+describe("opening a document saved by an older version", () => {
+  /** What this browser held before the Gantt, the chart or the new columns
+   * existed: tasks and little else. */
+  const ancient = {
+    version: 1,
+    tasks: [{ name: "Old task", values: { start: "2026-03-02", finish: "2026-03-06" } }],
+    settings: { projectName: "From before" },
+    fields: [
+      { id: "owner", label: "Owner", type: "text", rollup: "none", width: 16, visible: true },
+      { id: "start", label: "Start", type: "date", rollup: "min", width: 12, visible: true },
+      { id: "finish", label: "Finish", type: "date", rollup: "max", width: 12, visible: true },
+    ],
+  };
+
+  it("fills in the parts that did not exist yet", () => {
+    const restored = normaliseDoc(ancient)!;
+    expect(restored.gantt.scale).toBe("week");
+    expect(restored.chart.orientation).toBe("down");
+    expect(restored.settings.projectName).toBe("From before");
+  });
+
+  it("puts back the columns added since, keeping the reader's own", () => {
+    const restored = normaliseDoc({
+      ...ancient,
+      fields: [...ancient.fields, { id: "site", label: "Site", type: "text", rollup: "none", width: 12, visible: true }],
+    })!;
+    expect(restored.fields.some((field) => field.id === "duration")).toBe(true);
+    expect(restored.fields.some((field) => field.id === "timeline")).toBe(true);
+    expect(restored.fields.some((field) => field.id === "site")).toBe(true);
+    // The reader's own column keeps its label; a built-in keeps the one it had.
+    expect(restored.fields.find((field) => field.id === "owner")?.label).toBe("Owner");
+  });
+
+  it("restores the derived behaviour of a column the file called ordinary", () => {
+    const restored = normaliseDoc({
+      ...ancient,
+      fields: [...ancient.fields, { id: "duration", label: "Duration", type: "number", rollup: "sum", width: 9, visible: true }],
+    })!;
+    const duration = restored.fields.find((field) => field.id === "duration")!;
+    expect(duration.computed?.kind).toBe("duration");
+    expect(flatten(restored)[0].values.duration).toBe(5);
+  });
+
+  it("builds a timeline for a document that never had one", () => {
+    const restored = normaliseDoc(ancient)!;
+    expect(typeof flatten(restored)[0].values.timeline).toBe("string");
+  });
+
+  it("refuses anything that is not a document", () => {
+    expect(normaliseDoc(null)).toBe(null);
+    expect(normaliseDoc("nope")).toBe(null);
+    expect(normaliseDoc({ hello: true })).toBe(null);
+  });
+
+  it("survives a file with no fields at all", () => {
+    const restored = normaliseDoc({ tasks: [{ name: "Only this" }] })!;
+    expect(restored.fields.length).toBeGreaterThan(0);
+    expect(restored.gantt.startFieldId).toBe("start");
   });
 });

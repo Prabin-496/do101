@@ -12,6 +12,7 @@ import type { FieldType, FieldValue, WbsDoc, WbsField, WbsTask } from "./model";
 import { CHART_SHAPES, newTask } from "./model";
 import {
   coerceValue,
+  DEFAULT_FIELDS,
   defaultChart,
   defaultFields,
   defaultGantt,
@@ -290,33 +291,71 @@ function sanitiseTask(input: unknown): WbsTask | null {
   return task;
 }
 
-/** Rebuilds a document from a saved file, filling in anything missing. */
-export function parseDoc(json: string): WbsDoc | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(json);
-  } catch {
-    return null;
-  }
-  if (!parsed || typeof parsed !== "object") return null;
-  const record = parsed as Record<string, unknown>;
+/**
+ * Brings a saved column list up to date.
+ *
+ * A document saved by an older version of the tool has whatever columns
+ * existed then, so any built-in added since is put back at the position it
+ * has by default. Columns the reader added, and any order they chose, are
+ * left alone. Whether a column is computed is decided by the code rather than
+ * by the file, so a stored copy can never turn a derived column into a
+ * typeable one.
+ */
+function mergeFields(stored: WbsField[]): WbsField[] {
+  const merged = [...stored];
+  DEFAULT_FIELDS.forEach((field, index) => {
+    if (merged.some((entry) => entry.id === field.id)) return;
+    merged.splice(Math.min(index, merged.length), 0, { ...field });
+  });
+
+  return merged.map((field) => {
+    const builtin = DEFAULT_FIELDS.find((entry) => entry.id === field.id);
+    if (!builtin) return field;
+    return {
+      ...field,
+      builtin: true,
+      computed: builtin.computed ? { ...builtin.computed } : undefined,
+      format: field.format ?? builtin.format,
+    };
+  });
+}
+
+/**
+ * Rebuilds a document from anything that claims to be one — a saved file, or
+ * this browser's own storage written by an older version — filling in every
+ * part that is missing. Everything downstream may then assume a whole
+ * document, which is what stops a file from before a feature existed
+ * crashing the tool that reads it.
+ */
+export function normaliseDoc(value: unknown): WbsDoc | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
   if (!Array.isArray(record.tasks)) return null;
 
-  const fields = Array.isArray(record.fields)
+  const stored = Array.isArray(record.fields)
     ? (record.fields as unknown[]).filter(
         (field): field is WbsField =>
           Boolean(field) &&
           typeof (field as WbsField).id === "string" &&
           typeof (field as WbsField).label === "string",
       )
-    : defaultFields();
+    : [];
 
   return {
     version: 1,
     settings: { ...defaultSettings(), ...(record.settings as object | undefined) },
     chart: { ...defaultChart(), ...(record.chart as object | undefined) },
     gantt: { ...defaultGantt(), ...(record.gantt as object | undefined) },
-    fields: fields.length > 0 ? fields : defaultFields(),
+    fields: stored.length > 0 ? mergeFields(stored) : defaultFields(),
     tasks: record.tasks.map(sanitiseTask).filter((task): task is WbsTask => task !== null),
   };
+}
+
+/** Rebuilds a document from a saved file. */
+export function parseDoc(json: string): WbsDoc | null {
+  try {
+    return normaliseDoc(JSON.parse(json));
+  } catch {
+    return null;
+  }
 }

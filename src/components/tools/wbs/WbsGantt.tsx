@@ -74,7 +74,7 @@ export function WbsGantt({
       bands: timeBands(periods, settings.scale),
       truncated,
       bars: ganttBars(doc, rows, range),
-      width: Math.max(periods.length * PERIOD_WIDTH[settings.scale], 240),
+      width: Math.max(periods.length * (PERIOD_WIDTH[settings.scale] ?? PERIOD_WIDTH.week), 240),
     };
   }, [doc, rows, settings]);
 
@@ -83,7 +83,7 @@ export function WbsGantt({
   const pxPerDay = width / span;
   const todayOffset = hydrated ? dayDiff(range.start, todayIso()) : -1;
   const showToday = settings.showToday && hydrated && todayOffset >= 0 && todayOffset < span;
-  const columnWidth = PERIOD_WIDTH[settings.scale];
+  const columnWidth = PERIOD_WIDTH[settings.scale] ?? PERIOD_WIDTH.week;
 
   function startDrag(event: React.PointerEvent, bar: GanttBar) {
     if (!onDates || !bar.start || bar.row.isSummary) return;
