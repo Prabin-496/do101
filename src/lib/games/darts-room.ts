@@ -22,9 +22,9 @@ import {
   throwDart,
   type DartsState,
 } from "./darts";
-import { describePeerError, roomPeerId } from "./room";
+import { describePeerError, roomPeerId } from "@/lib/p2p/room";
 
-export { makeRoomCode, normalizeRoomCode } from "./room";
+export { makeRoomCode, normalizeRoomCode } from "@/lib/p2p/room";
 
 export const DARTS_PREFIX = "do101-darts-";
 

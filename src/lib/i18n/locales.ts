@@ -1,12 +1,15 @@
 /**
  * DO101's language support.
  *
- * Scope, stated honestly: this translates the **interface** — navigation,
- * buttons, labels, the homepage hero and the footer. The long explanatory copy
- * on each of the 102 tool pages remains in English for now. Machine-translating
- * that much prose would produce text that reads badly and, worse, could state
- * something inaccurate about what a tool does. The framework is here so those
- * pages can be translated properly over time.
+ * Scope: the whole site, not just the chrome. Two mechanisms share the work.
+ * messages.ts holds the strings the interface looks up by key — navigation,
+ * the hero, the footer — and is hand-written and reviewed. Everything else,
+ * including the description, steps, features and FAQ on each tool page and
+ * the labels inside the tools themselves, comes from the generated
+ * dictionaries in ./dictionaries and is applied to the rendered page by
+ * PageTranslator. See dictionary.ts for why that split exists.
+ *
+ * Text a visitor types is never touched, in either mechanism.
  */
 
 export interface Locale {

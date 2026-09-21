@@ -5,9 +5,9 @@
  * lives in ./room — see the note there on why a room has no server behind it.
  */
 
-import { describePeerError, roomPeerId } from "./room";
+import { describePeerError, roomPeerId } from "@/lib/p2p/room";
 
-export { makeRoomCode, normalizeRoomCode } from "./room";
+export { makeRoomCode, normalizeRoomCode } from "@/lib/p2p/room";
 
 export type BattleMessage =
   | { type: "hello"; name: string }

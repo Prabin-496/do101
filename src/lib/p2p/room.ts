@@ -1,10 +1,12 @@
 /**
- * Shared plumbing for DO101's peer-to-peer game rooms.
+ * Shared plumbing for DO101's peer-to-peer rooms.
  *
- * Both browsers talk directly to each other over a WebRTC data channel.
- * A public PeerJS broker is used only to exchange connection details;
- * no move ever passes through a DO101 server, and there is no database
- * keeping rooms alive — a room exists while the host tab is open.
+ * Browsers talk directly to each other over WebRTC. A free public PeerJS
+ * broker is used only to exchange connection details; nothing that happens
+ * in a room passes through a DO101 server, and there is no database keeping
+ * rooms alive — a room exists while the host's tab is open.
+ *
+ * Used by Typing Battle, Darts 301 and TalkieGenZ.
  */
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I, O, 0, 1

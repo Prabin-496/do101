@@ -25,6 +25,7 @@ const config: CategoryPageConfig = {
         <>
           <p>Start with the <Link href="/tools/serp-preview">SERP Snippet Preview</Link> to draft a title and description that survive truncation. Feed the finished title into the <Link href="/tools/slug-generator">URL Slug Generator</Link> for a clean permalink. Then use the <Link href="/tools/meta-tag-generator">Meta Tag Generator</Link> to produce the full head block, including Open Graph and Twitter card tags so the page looks right when someone shares it.</p>
           <p>The <Link href="/tools/word-counter">Word Counter</Link> also reports keyword density, which is a quick way to check a draft is genuinely about what you think it is about.</p>
+          <p>Publishing video rather than pages? The <Link href="/tools/youtube-shorts-seo">YouTube Shorts SEO Generator</Link> does the same job for a Short: a Hinglish title inside the length YouTube will actually show, a description with a call to action, a correctly sized tag list, and a hook for the first three seconds.</p>
         </>
       ),
     },

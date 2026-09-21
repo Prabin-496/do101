@@ -34,6 +34,9 @@ export function LanguageSwitcher({ floating = false }: { floating?: boolean }) {
   return (
     <div
       ref={containerRef}
+      // Each option names its own language in its own script. Translating
+      // that list would defeat the point of it.
+      translate="no"
       className={cn(
         "relative",
         floating

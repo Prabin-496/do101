@@ -85,7 +85,7 @@ const en: Messages = {
   "lang.label": "Language",
   "lang.choose": "Choose a language",
   "lang.uiOnly":
-    "The interface is translated. Tool pages are still written in English while they are translated properly.",
+    "The whole site is translated, not just the menus. Anything you type yourself is left exactly as you wrote it.",
   "lang.detected": "Detected from your browser",
 };
 
@@ -127,7 +127,7 @@ const ja: Messages = {
   "lang.label": "言語",
   "lang.choose": "言語を選択",
   "lang.uiOnly":
-    "インターフェースは翻訳済みです。各ツールページの解説文は、正式な翻訳が完了するまで英語のままです。",
+    "メニューだけでなくサイト全体が翻訳されます。入力した内容はそのまま保持されます。",
   "lang.detected": "ブラウザの設定から判定",
 };
 
@@ -169,7 +169,7 @@ const es: Messages = {
   "lang.label": "Idioma",
   "lang.choose": "Elige un idioma",
   "lang.uiOnly":
-    "La interfaz está traducida. Las páginas de herramientas siguen en inglés mientras se traducen correctamente.",
+    "Se traduce todo el sitio, no solo los menús. Lo que tú escribes se mantiene tal cual.",
   "lang.detected": "Detectado por tu navegador",
 };
 
@@ -211,7 +211,7 @@ const fr: Messages = {
   "lang.label": "Langue",
   "lang.choose": "Choisir une langue",
   "lang.uiOnly":
-    "L’interface est traduite. Les pages d’outils restent en anglais le temps d’être traduites correctement.",
+    "Tout le site est traduit, pas seulement les menus. Ce que vous saisissez reste tel quel.",
   "lang.detected": "Détecté depuis votre navigateur",
 };
 
@@ -253,7 +253,7 @@ const de: Messages = {
   "lang.label": "Sprache",
   "lang.choose": "Sprache wählen",
   "lang.uiOnly":
-    "Die Oberfläche ist übersetzt. Die Werkzeugseiten bleiben vorerst auf Englisch, bis sie sauber übersetzt sind.",
+    "Die gesamte Website wird übersetzt, nicht nur die Menüs. Ihre eigenen Eingaben bleiben unverändert.",
   "lang.detected": "Aus deinem Browser erkannt",
 };
 
@@ -295,7 +295,7 @@ const pt: Messages = {
   "lang.label": "Idioma",
   "lang.choose": "Escolha um idioma",
   "lang.uiOnly":
-    "A interface está traduzida. As páginas das ferramentas continuam em inglês até serem traduzidas corretamente.",
+    "O site inteiro é traduzido, não apenas os menus. O que você digita permanece como está.",
   "lang.detected": "Detectado pelo seu navegador",
 };
 
@@ -337,7 +337,7 @@ const hi: Messages = {
   "lang.label": "भाषा",
   "lang.choose": "भाषा चुनें",
   "lang.uiOnly":
-    "इंटरफ़ेस का अनुवाद हो चुका है। टूल पेजों का विवरण सही अनुवाद होने तक अंग्रेज़ी में ही रहेगा।",
+    "पूरी साइट का अनुवाद होता है, सिर्फ़ मेन्यू का नहीं। आपका लिखा हुआ जैसा है वैसा ही रहता है।",
   "lang.detected": "आपके ब्राउज़र से पहचाना गया",
 };
 
@@ -379,7 +379,7 @@ const ne: Messages = {
   "lang.label": "भाषा",
   "lang.choose": "भाषा छान्नुहोस्",
   "lang.uiOnly":
-    "इन्टरफेस अनुवाद भइसकेको छ। उपकरण पृष्ठहरूको विवरण राम्ररी अनुवाद नहुँदासम्म अङ्ग्रेजीमै रहनेछ।",
+    "मेनु मात्र होइन, सिङ्गो साइट अनुवाद हुन्छ। तपाईंले लेखेको कुरा जस्ताको तस्तै रहन्छ।",
   "lang.detected": "तपाईंको ब्राउजरबाट पत्ता लगाइयो",
 };
 
@@ -420,7 +420,7 @@ const zh: Messages = {
   "footer.rights": "保留所有权利。",
   "lang.label": "语言",
   "lang.choose": "选择语言",
-  "lang.uiOnly": "界面已翻译。工具页面的说明文字在完成正式翻译前仍为英文。",
+  "lang.uiOnly": "整个网站都会翻译，不只是菜单。你自己输入的内容保持原样。",
   "lang.detected": "根据浏览器设置识别",
 };
 
@@ -461,7 +461,7 @@ const ko: Messages = {
   "footer.rights": "모든 권리 보유.",
   "lang.label": "언어",
   "lang.choose": "언어 선택",
-  "lang.uiOnly": "인터페이스는 번역되었습니다. 도구 페이지 설명은 정식 번역 전까지 영어로 표시됩니다.",
+  "lang.uiOnly": "메뉴뿐 아니라 사이트 전체가 번역됩니다. 직접 입력한 내용은 그대로 유지됩니다.",
   "lang.detected": "브라우저 설정에서 감지됨",
 };
 
@@ -503,7 +503,7 @@ const id: Messages = {
   "lang.label": "Bahasa",
   "lang.choose": "Pilih bahasa",
   "lang.uiOnly":
-    "Antarmuka sudah diterjemahkan. Halaman alat masih berbahasa Inggris sampai diterjemahkan dengan benar.",
+    "Seluruh situs diterjemahkan, bukan hanya menunya. Teks yang Anda ketik sendiri dibiarkan apa adanya.",
   "lang.detected": "Terdeteksi dari peramban Anda",
 };
 
@@ -545,7 +545,7 @@ const ar: Messages = {
   "lang.label": "اللغة",
   "lang.choose": "اختر لغة",
   "lang.uiOnly":
-    "تمت ترجمة الواجهة. أما صفحات الأدوات فما زالت بالإنجليزية إلى أن تُترجم ترجمة صحيحة.",
+    "يُترجَم الموقع بأكمله، لا القوائم وحدها. أما ما تكتبه أنت فيبقى كما هو.",
   "lang.detected": "تم التعرف عليها من متصفحك",
 };
 

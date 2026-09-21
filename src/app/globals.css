@@ -42,6 +42,11 @@
 
   --ring: #22b8f0;
   --shadow-card: 0 2px 0 var(--border-strong);
+
+  /* Chart marks. Each mode gets its own step rather than a flipped one, so
+     both sit inside the readable lightness band for their surface. */
+  --chart-warm: var(--fire);
+  --chart-cool: var(--sky);
 }
 
 .dark {
@@ -61,6 +66,11 @@
   --cherry-soft: #3a1a1a;
 
   --shadow-card: 0 2px 0 #0d151a;
+
+  /* The light steps are too bright against #1b2830; the -dark steps are the
+     ones that stay legible there. */
+  --chart-warm: var(--fire-dark);
+  --chart-cool: var(--sky-dark);
 }
 
 @theme inline {

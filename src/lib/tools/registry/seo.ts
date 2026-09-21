@@ -144,4 +144,85 @@ export const SEO_TOOLS: Tool[] = [
       },
     ],
   },
+  {
+    id: "youtube-shorts-seo",
+    name: "YouTube Shorts SEO Generator",
+    short: "Hinglish title, description, tags, hook and pinned comment for a Short.",
+    long:
+      "Paste your Short's topic, title or keywords and get a complete upload pack for an Indian audience: a Hinglish title fitted to 45–65 characters with two hashtags, an 80–150 word description that carries your keyword three or four times and ends in a call to action with five hashtags, 300–500 characters of comma-separated tags, a pinned comment, a first-three-seconds hook and a checklist measured against what was generated. Every section has its own Copy button, there is a Copy all, and \"New variation\" rewrites the lot from the same keyword. No AI model is involved: the output comes from Hinglish pattern banks, keyword parsing and length rules running in your browser, which is why the same topic always gives the same result.",
+    category: "seo",
+    route: "/tools/youtube-shorts-seo",
+    keywords: [
+      "youtube shorts seo", "shorts title generator", "youtube shorts description generator",
+      "youtube tags generator", "hinglish title generator", "shorts hashtag generator",
+      "youtube shorts seo hindi", "viral shorts title", "youtube seo tool india",
+      "shorts hook generator", "pinned comment generator", "youtube shorts keywords",
+    ],
+    aliases: [
+      "shorts seo generator", "youtube shorts title", "shorts description generator",
+      "yt shorts seo", "hinglish youtube seo", "shorts tags generator",
+    ],
+    icon: "🎬",
+    accent: "grass",
+    browserOnly: true,
+    aiInvocable: false,
+    input: "text",
+    output: "text",
+    related: ["thumbnail-grabber", "meta-tag-generator", "serp-preview", "character-counter"],
+    seoTitle: "YouTube Shorts SEO Generator — Hinglish Title, Tags & Hook | DO101",
+    seoDescription:
+      "Paste your Shorts topic for a Hinglish title, 80–150 word description, 300–500 characters of tags, a pinned comment and a 3-second hook. Free, browser-only, no login.",
+    steps: [
+      "Paste your video topic, working title or keywords — one line is enough.",
+      "Leave the niche on auto-detect, or pick one if the topic is broad.",
+      "Press Generate SEO.",
+      "Copy each section straight into YouTube Studio, or use Copy all.",
+      "Want a different angle? Press New variation for a fresh set from the same keyword.",
+    ],
+    features: [
+      "Hinglish title fitted to 45–65 characters, with 1–2 emoji and exactly 2 hashtags",
+      "80–150 word description with your keyword 3–4 times, a CTA and exactly 5 hashtags",
+      "300–500 characters of comma-separated tags, built from your keyword and its niche",
+      "A pinned comment written to start the comment thread, not just fill it",
+      "A first-three-seconds hook: what to say, what to put on screen, what the first frame shows",
+      "A checklist whose first rows are measured from your actual output, not generic advice",
+      "Copy buttons on every section plus Copy all, and a New variation button",
+      "Thirteen niches detected from your topic: tech, money, study, fitness, food, travel and more",
+      "No account, no API key and no AI model — your text never leaves the page",
+    ],
+    faqs: [
+      {
+        q: "Does this use AI?",
+        a: "No, and it does not pretend to. Your topic is parsed into a main keyword and a niche, and the sections are built from Hinglish pattern banks and then fitted to YouTube's length rules by ordinary JavaScript. That is why the same topic gives the same output every time, and why it works with no API key, no account and no cost.",
+      },
+      {
+        q: "Is my topic sent anywhere?",
+        a: "No. The generator is a pure function running in your own tab. There is no upload endpoint, nothing is stored and nothing is logged — close the tab and it is gone.",
+      },
+      {
+        q: "Why Hinglish rather than pure Hindi or English?",
+        a: "Because that is how most Indian Shorts viewers search and speak. A Devanagari-only title cuts out people typing in Roman script, and a purely English one reads like a translation. Hinglish covers both, and you can always edit the output before pasting it.",
+      },
+      {
+        q: "Why does the title have to be 45–65 characters?",
+        a: "Shorts titles are shown in a narrow column, and past roughly 65 characters the tail gets cut on a phone. Under about 45 you are leaving searchable words on the table. The tool fits the title to that window and tells you the exact count.",
+      },
+      {
+        q: "Are three or four keyword mentions safe?",
+        a: "Yes. That is natural density for an 80–150 word description — the keyword appears in the opening line, in the body and once more around the CTA. Repeating it ten times is keyword stuffing, which YouTube's spam policy covers, so the tool caps it.",
+      },
+      {
+        q: "Do tags still matter on YouTube?",
+        a: "Less than titles and descriptions, and YouTube says so itself: they mainly help when your topic is commonly misspelled or has several names. They are cheap to fill in, so the tool gives you a properly sized list rather than pretending they are decisive.",
+      },
+      {
+        q: "Will this make my Short go viral?",
+        a: "No tool can promise that, and one that does is lying. Retention in the first three seconds is what drives the Shorts feed. Good metadata gets you found in search and suggested, and the hook section is there because the video itself has to earn the watch time.",
+      },
+      {
+        q: "Can I use the output as it is?",
+        a: "Yes, but read it first. It is built from templates, so check that the claims match what your video actually shows — say the exact numbers you quote, and drop any bullet that your Short does not deliver. Metadata that oversells the video hurts retention, which hurts reach.",
+      },
+    ],
+  },
 ];

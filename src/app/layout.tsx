@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { CommandPaletteProvider } from "@/components/layout/CommandPalette";
 import { LanguageProvider } from "@/components/layout/LanguageProvider";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
+import { PageTranslator } from "@/components/layout/PageTranslator";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -75,6 +76,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="flex min-h-dvh flex-col antialiased">
         <ThemeProvider>
           <LanguageProvider>
+            {/* Swaps the page into the chosen language once it is known. */}
+            <PageTranslator />
             <CommandPaletteProvider>
             <a
               href="#main"

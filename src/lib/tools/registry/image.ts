@@ -493,4 +493,84 @@ export const IMAGE_TOOLS: Tool[] = [
     ],
     featured: true,
   },
+  {
+    id: "thumbnail-grabber",
+    name: "Video Thumbnail Grabber",
+    short: "Get the cover image off any YouTube or Vimeo video, at full size.",
+    long:
+      "Paste a YouTube or Vimeo link and get its cover image in every size the site publishes, up to 1280×720, straight from the source at full quality. Shorts, youtu.be links, embeds and unlisted Vimeo videos all work. Save the provider's own file untouched, or re-encode it as PNG, WebP or JPG. Your browser fetches the picture directly from the video site — the link never reaches a DO101 server, because there isn't one.",
+    category: "image",
+    route: "/tools/thumbnail-grabber",
+    keywords: [
+      "youtube thumbnail downloader", "video thumbnail grabber", "download youtube thumbnail",
+      "youtube cover image", "maxresdefault", "hd thumbnail download", "vimeo thumbnail",
+      "youtube shorts thumbnail", "get video thumbnail", "thumbnail 1280x720",
+      "video poster image", "save youtube thumbnail",
+    ],
+    aliases: [
+      "youtube thumbnail", "thumbnail downloader", "grab video thumbnail",
+      "video cover image", "youtube preview image", "yt thumbnail",
+    ],
+    icon: "🖼️",
+    accent: "grape",
+    browserOnly: true,
+    aiInvocable: false,
+    input: "text",
+    output: "file",
+    related: ["image-compressor", "image-resizer", "jpg-to-webp", "canvas"],
+    seoTitle: "YouTube Thumbnail Downloader — Full Size, Free | DO101",
+    seoDescription:
+      "Paste a YouTube or Vimeo link and download its thumbnail in every size, up to 1280×720 HD. Shorts supported. Save as JPG, PNG or WebP. Free, no account, nothing uploaded.",
+    steps: [
+      "Copy the share link from YouTube or Vimeo — Shorts and youtu.be links are fine.",
+      "Paste it in the box and press Get covers.",
+      "Every size the video actually has appears, biggest first, with its real dimensions.",
+      "Press Download to save the original file, or switch the format to PNG, WebP or JPG first.",
+    ],
+    features: [
+      "Every size the video has, from 1280×720 down, with the real pixel dimensions measured",
+      "Works with YouTube, YouTube Shorts, youtu.be, embed links and Vimeo",
+      "Saves the provider's own file byte for byte — no re-encoding, no quality lost",
+      "Optional conversion to PNG, WebP or JPG in your browser",
+      "Shows the video title and channel, and links back to the original",
+      "Copy the picture straight to the clipboard, or copy its direct address",
+      "Tells you when a video has no HD cover instead of handing you an upscale",
+      "Warns which sizes are 4:3 and will have black bars on a widescreen video",
+      "No account, no upload endpoint, and the link never reaches a DO101 server",
+    ],
+    faqs: [
+      {
+        q: "Can it download the video itself?",
+        a: "No, and it is worth being straight about why. Video files are not served in a way a web page is allowed to read — YouTube puts them behind a rotating signature that has to be solved server-side, and Instagram and TikTok use signed URLs that block other sites outright. Any site that does offer it is running a server that strips those protections, which is both against those platforms' terms and legally contested. This tool only takes the cover image, which those sites publish openly for anyone to load.",
+      },
+      {
+        q: "Why will it not take an Instagram, TikTok or X link?",
+        a: "Those platforms do not publish their cover images in a way another website can fetch. Instagram and TikTok serve signed URLs that refuse requests from other sites, and X only gives out an embed card. That is their decision, not a limitation here — no tool running purely in your browser can get around it.",
+      },
+      {
+        q: "What is the biggest thumbnail I can get?",
+        a: "1280×720, which is the largest YouTube generates and only for videos uploaded in HD. If a video was uploaded at a lower resolution, the biggest is 480×360 and the tool says so rather than pretending otherwise. Anything advertised as larger elsewhere has been upscaled, which adds pixels but no detail.",
+      },
+      {
+        q: "Why do some sizes have black bars?",
+        a: "Three of YouTube's sizes are still generated at the old 4:3 shape, so a widescreen video gets padded with black above and below. The tool labels those, so you can pick a 16:9 one instead — Max at 1280×720 and Medium at 320×180 are the widescreen ones.",
+      },
+      {
+        q: "Does the image lose quality?",
+        a: "Not if you leave the format on Original, which saves the provider's own file exactly as it was sent — nothing is decoded or re-encoded. Converting to PNG, WebP or JPG does re-encode it, which is why it is a separate choice rather than the default.",
+      },
+      {
+        q: "Am I allowed to use the thumbnail?",
+        a: "Saving it is one thing; reusing it is another. The image belongs to whoever made the video, and downloading it here gives you no rights over it. Quoting one in a review or a news piece is usually fine under fair use or fair dealing, but using it as your own artwork, in an advert, or as a thumbnail on your own video is not. Credit the channel, and ask first if it is anything commercial.",
+      },
+      {
+        q: "Is my link sent anywhere?",
+        a: "Only to the video site itself. Your browser asks YouTube or Vimeo for the title and the picture directly, exactly as it would if you had opened the page. There is no DO101 server in the middle, which is also why there is nothing to sign up for.",
+      },
+      {
+        q: "Does it work with private or age-restricted videos?",
+        a: "No. It can only see what the site publishes to everyone. A private, deleted or members-only video returns nothing, and the tool says so rather than guessing.",
+      },
+    ],
+  },
 ];

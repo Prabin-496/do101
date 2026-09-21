@@ -32,6 +32,17 @@ const nextConfig: NextConfig = {
         source: "/kuromoji/dict/:file*",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
+      {
+        // Phone numbering-region and carrier tables. The +1 table alone is
+        // 600KB, so revalidating it on every lookup is wasteful, but these are
+        // rebuilt whenever libphonenumber is upgraded and the paths stay the
+        // same — so not immutable. A week of staleness is nothing next to how
+        // slowly prefix allocations actually move.
+        source: "/phone-data/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" },
+        ],
+      },
     ];
   },
 };
